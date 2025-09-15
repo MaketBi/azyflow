@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SuccessModal from '../components/SuccessModal';
 import { AuthService } from '../lib/auth';
 import { CompanyService } from '../lib/services/companies';
 import { Button } from '../components/ui/Button';
@@ -15,17 +16,22 @@ export const LoginPage: React.FC = () => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isSignUp) return;
+    if (!isSignUp || role !== 'freelancer') {
+      setCompanies([]);
+      return;
+    }
     CompanyService.getAll()
-      .then((data) => setCompanies(data))
+      .then((data) => {
+        setCompanies(data);
+      })
       .catch((err) => {
-        console.error('Erreur chargement sociétés:', err);
         setError(`Erreur chargement sociétés: ${err.message || err}`);
       });
-  }, [isSignUp]);
+  }, [isSignUp, role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +60,7 @@ export const LoginPage: React.FC = () => {
         setError(error.message);
       } else {
         setSuccess('Compte créé avec succès ! Vérifiez votre email pour confirmer votre compte.');
+        setShowSuccess(true);
         setEmail('');
         setPassword('');
         setFullName('');
@@ -175,11 +182,7 @@ export const LoginPage: React.FC = () => {
                   <p className="text-sm text-red-600">{error}</p>
                 </div>
               )}
-              {success && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-600">{success}</p>
-                </div>
-              )}
+              {/* SuccessModal remplace l'ancien message de succès */}
               <Button
                 type="submit"
                 disabled={loading}
@@ -211,6 +214,11 @@ export const LoginPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+      <SuccessModal
+        isOpen={showSuccess}
+        message="Vérifiez votre email pour confirmer votre compte."
+        onClose={() => setShowSuccess(false)}
+      />
     </div>
   );
 };
