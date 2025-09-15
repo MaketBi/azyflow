@@ -10,10 +10,19 @@ export class ClientService {
    * Get all clients in current company
    */
   static async getAll(): Promise<Client[]> {
+
+    // Récupère le company_id via le RPC
+    const { data: companyIdData, error: rpcError } = await supabase.rpc('current_company_id');
+    const companyId = Array.isArray(companyIdData) ? companyIdData[0] : companyIdData;
+    if (!companyId) {
+      console.error('Aucun company_id trouvé');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('clients')
       .select('*')
-      .eq('company_id', supabase.rpc('current_company_id'))
+      .eq('company_id', companyId)
       .order('name');
 
     if (error) {

@@ -1,4 +1,4 @@
-// supabaseAdmin removed
+import { supabase } from '../supabase';
 
 export async function inviteFreelancer(
   email: string,
@@ -26,14 +26,13 @@ export async function inviteFreelancer(
     return { success: false, error: err.message || 'Erreur réseau' };
   }
 }
-import { supabase } from '../supabase';
-import { Tables, TablesInsert, TablesUpdate } from '../database';
 
-export type User = Tables<'users'> & {
-  active: boolean;
-};
-export type UserInsert = TablesInsert<'users'>;
-export type UserUpdate = TablesUpdate<'users'>;
+import type { Database } from '../database';
+
+export type User = Database['public']['Tables']['users']['Row'];
+export type UserInsert = Database['public']['Tables']['users']['Insert'];
+export type UserUpdate = Database['public']['Tables']['users']['Update'];
+export type Freelancer = User;
 
 export class UserService {
   /**
@@ -49,12 +48,11 @@ export class UserService {
   /**
    * Get all users in current company
    */
-  static async getAll(): Promise<User[]> {
-    const { data: companyIdData, error: rpcError } = await supabase.rpc('current_company_id');
-    // DEBUG: Supprime les logs détaillés, ne garde que les erreurs
-    // const user = await supabase.auth.getUser();
-    // console.log('[UserService.getAll] user.id:', user.data?.user?.id);
-    // console.log('[UserService.getAll] RPC result:', companyIdData, 'error:', rpcError);
+  /**
+   * Récupère tous les freelances de la société courante avec last_login
+   */
+  static async getAllFreelancers(): Promise<Freelancer[]> {
+    const { data: companyIdData } = await supabase.rpc('current_company_id');
     const companyId = Array.isArray(companyIdData) ? companyIdData[0] : companyIdData;
     if (!companyId) {
       console.error('Aucun company_id trouvé');
@@ -68,14 +66,43 @@ export class UserService {
       .order('full_name');
 
     if (error) {
-      console.error('Error fetching users:', error);
+      console.error('Erreur lors du chargement des freelances:', error);
       return [];
     }
 
-      return (data || []).map(u => ({
-        ...u,
-        active: u.active ?? false,
-      }));
+    return (data || []).map((u) => ({
+      ...u,
+      active: u.active ?? false,
+      last_login: u.last_login ?? null,
+    }));
+  }
+
+  /**
+   * Met à jour le statut actif/inactif d'un utilisateur
+   */
+  static async updateUserStatus(id: string, active: boolean): Promise<Freelancer | null> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ active })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Erreur lors de la mise à jour du statut:', error);
+        return null;
+      }
+
+      return data ? {
+        ...data,
+        active: data.active ?? false,
+        last_login: data.last_login ?? null,
+      } : null;
+    } catch (err) {
+      console.error('Exception updateUserStatus:', err);
+      return null;
+    }
   }
 
   /**
@@ -134,8 +161,23 @@ export class UserService {
   }
 
   /**
-   * Get freelancers in current company
+   * Récupère un freelance par son id
    */
+  static async getFreelancerById(id: string): Promise<Freelancer | null> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .eq('role', 'freelancer')
+      .single();
+
+    if (error) {
+      console.error('Erreur chargement freelance:', error);
+      return null;
+    }
+
+    return data ? { ...data, active: data.active ?? false, last_login: data.last_login ?? null } : null;
+  }
   static async getFreelancers(): Promise<User[]> {
     const { data: companyIdData } = await supabase.rpc('current_company_id');
     const companyId = Array.isArray(companyIdData) ? companyIdData[0] : companyIdData;
@@ -160,4 +202,32 @@ export class UserService {
       active: u.active ?? false,
     }));
   }
+    /**
+     * Désactive un utilisateur (active: false)
+     */
+    static async deactivateUser(id: string): Promise<User | null> {
+      console.log('[UserService.deactivateUser] Tentative de désactivation', { id });
+      const { data, error } = await supabase
+        .from('users')
+        .update({ active: false })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[UserService.deactivateUser] ERREUR lors de la désactivation', {
+          id,
+          update: { active: false },
+          error,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          message: error.message,
+        });
+        return null;
+      }
+
+      console.log('[UserService.deactivateUser] Succès', { id, data });
+      return data ? { ...data, active: data.active ?? false } : null;
+    }
 }

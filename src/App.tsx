@@ -7,6 +7,8 @@ import { DashboardPage } from '../pages/admin/DashboardPage';
 import { TimesheetsPage } from '../pages/freelancer/TimesheetsPage';
 import AdminTimesheetsPage from '../pages/admin/timesheets';
 import AdminFreelancersPage from '../pages/admin/freelancers';
+import ClientsPage from '../pages/admin/clients';
+import FreelancerProfile from '../pages/admin/FreelancerProfile';
 
 // ✅ Ajout des routes auth
 import AuthCallback from '../pages/auth/callback';
@@ -54,6 +56,8 @@ function App() {
             {/* ✅ Ajout simple des routes auth */}
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/set-password" element={<SetPasswordPage />} />
+           
+
 
             {!user ? (
               <Route path="*" element={<LoginPage />} />
@@ -62,6 +66,8 @@ function App() {
                 <Route path="/admin/dashboard" element={<DashboardPage />} />
                 <Route path="/admin/timesheets" element={<AdminTimesheetsPage />} />
                 <Route path="/admin/freelancers" element={<AdminFreelancersPage />} />
+                <Route path="/admin/clients" element={<ClientsPage />} />
+                 <Route path="/admin/freelancers/:id" element={<FreelancerProfile />} />
                 <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
               </>
             ) : (

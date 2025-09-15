@@ -16,30 +16,39 @@ export type Database = {
     Tables: {
       clients: {
         Row: {
+          address: string | null
           billing_address: string | null
           billing_email: string
           company_id: string
           created_at: string
+          email: string | null
           id: string
           name: string
+          phone: string | null
           tax_id: string | null
         }
         Insert: {
+          address?: string | null
           billing_address?: string | null
           billing_email: string
           company_id: string
           created_at?: string
+          email?: string | null
           id?: string
           name: string
+          phone?: string | null
           tax_id?: string | null
         }
         Update: {
+          address?: string | null
           billing_address?: string | null
           billing_email?: string
           company_id?: string
           created_at?: string
+          email?: string | null
           id?: string
           name?: string
+          phone?: string | null
           tax_id?: string | null
         }
         Relationships: [
@@ -235,31 +244,34 @@ export type Database = {
       }
       users: {
         Row: {
+          active: boolean | null
           company_id: string
           created_at: string
           email: string
           full_name: string
           id: string
+          last_login: string | null
           role: string
-          active: boolean;
         }
         Insert: {
+          active?: boolean | null
           company_id: string
           created_at?: string
           email: string
           full_name: string
           id: string
+          last_login?: string | null
           role?: string
-          active?: boolean
         }
         Update: {
+          active?: boolean | null
           company_id?: string
           created_at?: string
           email?: string
           full_name?: string
           id?: string
+          last_login?: string | null
           role?: string
-          active?: boolean
         }
         Relationships: [
           {

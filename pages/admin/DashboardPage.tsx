@@ -62,14 +62,14 @@ export const DashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="px-2 sm:px-4 md:px-8 lg:px-16 py-6 space-y-8 w-full max-w-7xl mx-auto">
       <div>
-  <h1 className="text-3xl font-bold text-gray-900">Tableau de bord</h1>
-  <p className="text-gray-600 mt-2">Aperçu de vos opérations de staffing</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tableau de bord</h1>
+        <p className="text-gray-600 mt-2 text-sm sm:text-base">Aperçu de vos opérations de staffing</p>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <KPICard
           title="Freelances actifs"
           value={stats.freelancers}
@@ -96,22 +96,22 @@ export const DashboardPage: React.FC = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* Recent Timesheets */}
-        <Card>
+        <Card className="mb-6 lg:mb-0">
           <CardHeader>
-            <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-base sm:text-lg">
               <Clock className="w-5 h-5 mr-2" />
               Dernières feuilles de temps
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table className="min-w-[400px]">
               <TableHeader>
                 <TableRow>
-              <TableHead>Freelance</TableHead>
-              <TableHead>Mois</TableHead>
-              <TableHead>Statut</TableHead>
+                  <TableHead>Freelance</TableHead>
+                  <TableHead>Mois</TableHead>
+                  <TableHead>Statut</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -142,13 +142,13 @@ export const DashboardPage: React.FC = () => {
         {/* Recent Invoices */}
         <Card>
           <CardHeader>
-              <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-base sm:text-lg">
               <DollarSign className="w-5 h-5 mr-2" />
               Dernières factures
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table className="min-w-[400px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Numéro</TableHead>

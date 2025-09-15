@@ -12,27 +12,20 @@ export const LoginPage: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<'admin' | 'freelancer'>('freelancer');
   const [companyName, setCompanyName] = useState('');
-  const [companies, setCompanies] = useState<Array<{id: string, name: string}>>([]);
-  const [loading, setLoading] = useState(false);
+  const [companies, setCompanies] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Charger les sociétés pour les freelancers
   useEffect(() => {
-    if (isSignUp && role === 'freelancer') {
-      loadCompanies();
-    }
-  }, [isSignUp, role]);
-
-  const loadCompanies = async () => {
-    try {
-      const companiesData = await CompanyService.getAll();
-      setCompanies(companiesData);
-    } catch (err: any) {
-      console.error('Erreur chargement sociétés:', err);
-      setError(`Erreur chargement sociétés: ${err.message || err}`);
-    }
-  };
+    if (!isSignUp) return;
+    CompanyService.getAll()
+      .then((data) => setCompanies(data))
+      .catch((err) => {
+        console.error('Erreur chargement sociétés:', err);
+        setError(`Erreur chargement sociétés: ${err.message || err}`);
+      });
+  }, [isSignUp]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,48 +34,39 @@ export const LoginPage: React.FC = () => {
     setSuccess('');
 
     if (isSignUp) {
-      // Inscription
       if (!fullName.trim()) {
         setError('Le nom complet est requis');
         setLoading(false);
         return;
       }
-
       if (!companyName.trim()) {
         setError(role === 'admin' ? 'Le nom de votre société est requis' : 'Veuillez sélectionner une société');
         setLoading(false);
         return;
       }
-
       const { error } = await AuthService.signUp(email, password, {
         fullName: fullName.trim(),
         role,
         companyId: role === 'freelancer' ? companyName.trim() : undefined,
         companyName: role === 'admin' ? companyName.trim() : '',
       });
-
       if (error) {
         setError(error.message);
       } else {
         setSuccess('Compte créé avec succès ! Vérifiez votre email pour confirmer votre compte.');
-        // Reset form
         setEmail('');
         setPassword('');
         setFullName('');
         setCompanyName('');
       }
     } else {
-      // Connexion
       const { error } = await AuthService.signIn(email, password);
-      
       if (error) {
         setError(error.message);
       } else {
-        // Connexion réussie - le trigger a déjà créé le profil si nécessaire
         window.location.reload();
       }
     }
-    
     setLoading(false);
   };
 
@@ -118,7 +102,6 @@ export const LoginPage: React.FC = () => {
                     required
                     placeholder="Entrez votre nom complet"
                   />
-                  
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">
                       Rôle
@@ -136,8 +119,6 @@ export const LoginPage: React.FC = () => {
                       <option value="admin">Administrateur</option>
                     </select>
                   </div>
-
-                  {/* Champ société selon le rôle */}
                   {role === 'admin' ? (
                     <Input
                       label="Nom de votre société"
@@ -173,7 +154,6 @@ export const LoginPage: React.FC = () => {
                   )}
                 </>
               )}
-              
               <Input
                 label="Adresse e-mail"
                 type="email"
@@ -190,19 +170,16 @@ export const LoginPage: React.FC = () => {
                 required
                 placeholder="Entrez votre mot de passe"
               />
-              
               {error && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-600">{error}</p>
                 </div>
               )}
-
               {success && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-sm text-green-600">{success}</p>
                 </div>
               )}
-
               <Button
                 type="submit"
                 disabled={loading}
@@ -215,8 +192,6 @@ export const LoginPage: React.FC = () => {
                 }
               </Button>
             </form>
-
-            {/* Toggle between sign in and sign up */}
             <div className="mt-6 text-center">
               <button
                 type="button"

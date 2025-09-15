@@ -22,18 +22,18 @@ export default function SetPassword() {
       return;
     }
 
-    // ⚡ Activer le user dans public.users
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase
-        .from("users")
-        .update({ active: true })
-        .eq("id", user.id);
+    // Pas besoin de mettre active=true ici → le trigger SQL s'en occupe
+
+    // Vérifier l'utilisateur connecté
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      setErrorMsg("Impossible de récupérer le profil utilisateur.");
+      setLoading(false);
+      return;
     }
 
-    // Redirection
-    const { data: { user: updatedUser } } = await supabase.auth.getUser();
-    if (updatedUser?.user_metadata?.role === "admin") {
+    // Redirection role-based
+    if (user.user_metadata?.role === "admin") {
       navigate("/admin/dashboard", { replace: true });
     } else {
       navigate("/freelancer", { replace: true });

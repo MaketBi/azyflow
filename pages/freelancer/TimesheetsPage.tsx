@@ -62,22 +62,22 @@ export const TimesheetsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
+    <div className="px-2 sm:px-4 md:px-8 lg:px-16 py-6 space-y-8 w-full max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Feuilles de temps (CRA)</h1>
-          <p className="text-gray-600 mt-2">Soumettez et suivez vos jours travaillés</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Feuilles de temps (CRA)</h1>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">Soumettez et suivez vos jours travaillés</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Nouvelle feuille de temps
         </Button>
       </div>
 
       {showForm && (
-        <Card>
+        <Card className="w-full">
           <CardHeader>
-            <CardTitle>Soumettre une nouvelle feuille de temps</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Soumettre une nouvelle feuille de temps</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -118,9 +118,9 @@ export const TimesheetsPage: React.FC = () => {
                 required
               />
 
-              <div className="flex space-x-4">
-                <Button type="submit">Soumettre la feuille de temps</Button>
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                <Button type="submit" className="w-full sm:w-auto">Soumettre la feuille de temps</Button>
+                <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="w-full sm:w-auto">
                   Annuler
                 </Button>
               </div>
@@ -129,9 +129,9 @@ export const TimesheetsPage: React.FC = () => {
         </Card>
       )}
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
+      <Card className="w-full">
+        <CardContent className="p-0 overflow-x-auto">
+          <Table className="min-w-[500px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Client</TableHead>
@@ -162,7 +162,7 @@ export const TimesheetsPage: React.FC = () => {
                       {timesheet.worked_days} jours
                     </div>
                   </TableCell>
-                    <TableCell className="font-medium">
+                  <TableCell className="font-medium">
                     €{timesheet.worked_days * (timesheet.contract?.tjm || 0)}
                   </TableCell>
                   <TableCell>

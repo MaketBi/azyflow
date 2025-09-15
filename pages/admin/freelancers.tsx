@@ -1,14 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { UserService, User } from '../../lib/services/users';
+import { UserService, Freelancer } from '../../lib/services/users';
 import { supabase } from '../../lib/supabase';
-import { sendInvitationEmail } from '../../lib/services/email';
 import { Button } from '../../components/ui/Button';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../../components/ui/Table';
 
-const statusLabel = (active: boolean) => (active ? 'Actif' : 'En attente');
+
+const getStatusLabel = (user: Freelancer) => {
+  if (!user.active && user.last_login === null) {
+    return { label: 'En attente d’inscription', color: 'bg-yellow-100 text-yellow-800' };
+  }
+  if (user.active) {
+    return { label: 'Actif', color: 'bg-green-100 text-green-800' };
+  }
+  if (!user.active && user.last_login !== null) {
+    return { label: 'Désactivé', color: 'bg-red-100 text-red-800' };
+  }
+  return { label: '—', color: 'bg-gray-100 text-gray-600' };
+};
 
 const AdminFreelancersPage: React.FC = () => {
-  const [freelancers, setFreelancers] = useState<User[]>([]);
+  const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -26,23 +37,25 @@ const AdminFreelancersPage: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      // Récupère tous les freelances de la société courante
-      const data = await UserService.getAll();
+      const data = await UserService.getAllFreelancers();
       setFreelancers(data || []);
     } catch (err: any) {
       setError('Erreur lors du chargement des freelances');
+      console.error('Erreur fetchFreelancers:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleStatus = async (user: User) => {
+  const handleToggleStatus = async (user: Freelancer) => {
     setUpdatingId(user.id);
     try {
-      await UserService.update(user.id, { active: !user.active } as any); // cast pour ignorer TS
+      const newStatus = !user.active;
+      await UserService.updateUserStatus(user.id, newStatus);
       await fetchFreelancers();
-    } catch {
+    } catch (err) {
       setError('Erreur lors de la mise à jour du statut');
+      console.error('Erreur handleToggleStatus:', err);
     } finally {
       setUpdatingId(null);
     }
@@ -94,32 +107,32 @@ const AdminFreelancersPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Freelances</h1>
-        <Button onClick={() => setModalOpen(true)}>Inviter un freelance</Button>
+    <div className="container mx-auto px-4 py-4 md:py-8">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-4">
+        <h1 className="text-xl md:text-3xl font-bold text-gray-900">Freelances</h1>
+        <Button className="w-full md:w-auto" onClick={() => setModalOpen(true)}>Inviter un freelance</Button>
       </div>
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm md:text-base text-red-600">{error}</p>
         </div>
       )}
       {success && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-sm text-green-600">{success}</p>
+          <p className="text-sm md:text-base text-green-600">{success}</p>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nom complet</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Date d’inscription</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="p-2 md:p-4">Nom complet</TableHead>
+              <TableHead className="p-2 md:p-4">Email</TableHead>
+              <TableHead className="p-2 md:p-4">Date d’inscription</TableHead>
+              <TableHead className="p-2 md:p-4">Statut</TableHead>
+              <TableHead className="p-2 md:p-4">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -136,55 +149,61 @@ const AdminFreelancersPage: React.FC = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              freelancers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.full_name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    {user.created_at
-                      ? new Date(user.created_at).toLocaleDateString('fr-FR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })
-                      : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {statusLabel(user.active)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant={user.active ? 'outline' : 'primary'}
-                        disabled={updatingId === user.id}
-                        onClick={() => handleToggleStatus(user)}
-                      >
-                        {updatingId === user.id
-                          ? '...'
-                          : user.active
-                          ? 'Désactiver'
-                          : 'Activer'}
-                      </Button>
-                      <a
-                        href={`/admin/freelancers/${user.id}`}
-                        className="text-blue-600 text-sm underline px-2 py-1"
-                        title="Voir le profil"
-                      >
-                        Voir
-                      </a>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              freelancers.map((user) => {
+                const status = getStatusLabel(user);
+                return (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium p-2 md:p-4">{user.full_name}</TableCell>
+                    <TableCell className="p-2 md:p-4">{user.email}</TableCell>
+                    <TableCell className="p-2 md:p-4">
+                      {user.last_login
+                        ? new Date(user.last_login).toLocaleDateString('fr-FR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="p-2 md:p-4">
+                      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
+                        {status.label}
+                      </span>
+                    </TableCell>
+                    <TableCell className="p-2 md:p-4">
+                      <div className="flex flex-col md:flex-row gap-2 justify-center">
+                        {/* Actions: Only show toggle if last_login is NOT NULL */}
+                        {user.last_login !== null && (
+                          <Button
+                            size="sm"
+                            variant={user.active ? 'outline' : 'primary'}
+                            className="w-full md:w-auto"
+                            disabled={updatingId === user.id}
+                            onClick={() => handleToggleStatus(user)}
+                          >
+                            {updatingId === user.id
+                              ? '...'
+                              : user.active
+                              ? 'Désactiver'
+                              : 'Réactiver'}
+                          </Button>
+                        )}
+                        <a
+                          href={`/admin/freelancers/${user.id}`}
+                          className="inline-flex items-center justify-center px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 font-medium text-sm shadow-sm hover:bg-blue-100 transition-colors border border-blue-200 w-full md:w-auto"
+                          title="Voir le profil"
+                          style={{ minWidth: '80px', textAlign: 'center' }}
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Voir
+                        </a>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
