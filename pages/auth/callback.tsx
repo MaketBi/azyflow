@@ -10,6 +10,9 @@ const CallbackPage: React.FC = () => {
     const run = async () => {
       try {
         const url = new URL(window.location.href);
+        console.log("🌐 Current URL:", url.href);
+        console.log("🌐 Current URL String:", url.toString());
+        console.log("🔄 Processing auth callback...");
 
         // On ne regarde que le hash (cas prod : #access_token=...&type=invite)
         const accessToken = url.hash.match(/access_token=([^&]*)/)?.[1];
