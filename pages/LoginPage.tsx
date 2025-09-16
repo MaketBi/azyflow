@@ -15,10 +15,10 @@ export const LoginPage: React.FC = () => {
   const [companyName, setCompanyName] = useState('');
   const [companies, setCompanies] = useState<any[]>([]);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Charger les sociétés si on est en inscription + rôle freelance
   useEffect(() => {
     if (!isSignUp || role !== 'freelancer') {
       setCompanies([]);
@@ -37,7 +37,6 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
 
     if (isSignUp) {
       if (!fullName.trim()) {
@@ -46,34 +45,42 @@ export const LoginPage: React.FC = () => {
         return;
       }
       if (!companyName.trim()) {
-        setError(role === 'admin' ? 'Le nom de votre société est requis' : 'Veuillez sélectionner une société');
+        setError(
+          role === 'admin'
+            ? 'Le nom de votre société est requis'
+            : 'Veuillez sélectionner une société'
+        );
         setLoading(false);
         return;
       }
-      const { error } = await AuthService.signUp(email, password, {
-        fullName: fullName.trim(),
-        role,
-        companyId: role === 'freelancer' ? companyName.trim() : undefined,
-        companyName: role === 'admin' ? companyName.trim() : '',
-      });
-      if (error) {
-        setError(error.message);
-      } else {
-        setSuccess('Compte créé avec succès ! Vérifiez votre email pour confirmer votre compte.');
+
+      try {
+        await AuthService.signUp(
+          email,
+          password,
+          fullName.trim(),
+          role,
+          companyName.trim()
+        );
+        // ✅ Succès → ouvrir le modal
         setShowSuccess(true);
+        // Reset des champs
         setEmail('');
         setPassword('');
         setFullName('');
         setCompanyName('');
+      } catch (err: any) {
+        setError(err.message || 'Erreur lors de la création du compte');
       }
     } else {
-      const { error } = await AuthService.signIn(email, password);
-      if (error) {
-        setError(error.message);
-      } else {
+      try {
+        await AuthService.signIn(email, password);
         window.location.reload();
+      } catch (err: any) {
+        setError(err.message || 'Erreur lors de la connexion');
       }
     }
+
     setLoading(false);
   };
 
@@ -177,43 +184,43 @@ export const LoginPage: React.FC = () => {
                 required
                 placeholder="Entrez votre mot de passe"
               />
+
               {error && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-600">{error}</p>
                 </div>
               )}
-              {/* SuccessModal remplace l'ancien message de succès */}
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full"
-                size="lg"
-              >
-                {loading 
-                  ? (isSignUp ? 'Création du compte...' : 'Connexion...') 
-                  : (isSignUp ? 'Créer le compte' : 'Se connecter')
-                }
+
+              <Button type="submit" disabled={loading} className="w-full" size="lg">
+                {loading
+                  ? isSignUp
+                    ? 'Création du compte...'
+                    : 'Connexion...'
+                  : isSignUp
+                    ? 'Créer le compte'
+                    : 'Se connecter'}
               </Button>
             </form>
+
             <div className="mt-6 text-center">
               <button
                 type="button"
                 onClick={() => {
                   setIsSignUp(!isSignUp);
                   setError('');
-                  setSuccess('');
                 }}
                 className="text-sm text-blue-600 hover:text-blue-800 underline"
               >
-                {isSignUp 
-                  ? 'Vous avez déjà un compte ? Connectez-vous' 
-                  : 'Pas encore de compte ? Créer un compte'
-                }
+                {isSignUp
+                  ? 'Vous avez déjà un compte ? Connectez-vous'
+                  : 'Pas encore de compte ? Créer un compte'}
               </button>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* ✅ Modal premium */}
       <SuccessModal
         isOpen={showSuccess}
         message="Vérifiez votre email pour confirmer votre compte."

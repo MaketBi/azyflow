@@ -14,28 +14,36 @@ export class AuthService {
   /**
    * Sign up with email and password + metadata
    */
-  static async signUp(email: string, password: string, userData: {
-  fullName: string;
-  role: 'admin' | 'freelancer';
-  companyName?: string;
-  companyId?: string;
-  }) {
+  static async signUp(
+    email: string,
+    password: string,
+    fullName: string,
+    role: string,
+    companyName?: string
+  ) {
+    const redirectUrl = import.meta.env.VITE_REDIRECT_URL;
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: userData.fullName,
-          role: userData.role,
-          ...(userData.role === 'admin'
-            ? { company_name: userData.companyName }
-            : { company_id: userData.companyId })
-        }
-      }
+          full_name: fullName,
+          role,
+          company_name: companyName,
+        },
+        emailRedirectTo: redirectUrl, // ✅ redirection dynamique dev/prod
+      },
     });
 
-    return { data, error };
+    if (error) {
+      console.error("[AuthService.signUp] Erreur :", error.message);
+      throw error;
+    }
+
+    return data;
   }
+
 
   /**
    * Sign in with email and password
