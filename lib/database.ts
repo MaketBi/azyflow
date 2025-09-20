@@ -14,6 +14,52 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_freelancers: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          freelancer_id: string
+          id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          freelancer_id: string
+          id?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          freelancer_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_freelancers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_freelancers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_freelancers_freelancer_id_fkey"
+            columns: ["freelancer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -85,9 +131,11 @@ export type Database = {
       contracts: {
         Row: {
           client_id: string
+          commission_rate: number | null
           company_id: string
           contract_file_url: string | null
           created_at: string
+          currency: string | null
           end_date: string
           id: string
           start_date: string
@@ -97,9 +145,11 @@ export type Database = {
         }
         Insert: {
           client_id: string
+          commission_rate?: number | null
           company_id: string
           contract_file_url?: string | null
           created_at?: string
+          currency?: string | null
           end_date: string
           id?: string
           start_date: string
@@ -109,9 +159,11 @@ export type Database = {
         }
         Update: {
           client_id?: string
+          commission_rate?: number | null
           company_id?: string
           contract_file_url?: string | null
           created_at?: string
+          currency?: string | null
           end_date?: string
           id?: string
           start_date?: string
@@ -146,42 +198,66 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          amount_cfa: number | null
           client_id: string
+          commission_amount: number | null
           company_id: string
+          conversion_rate: number | null
           created_at: string
           due_date: string | null
+          facturation_ht: number | null
+          facturation_net: number | null
+          facturation_ttc: number | null
           id: string
           issue_date: string
           number: string
+          paid_at: string | null
           pdf_url: string | null
           status: string
           timesheet_id: string
+          tjm_final: number | null
         }
         Insert: {
           amount: number
+          amount_cfa?: number | null
           client_id: string
+          commission_amount?: number | null
           company_id: string
+          conversion_rate?: number | null
           created_at?: string
           due_date?: string | null
+          facturation_ht?: number | null
+          facturation_net?: number | null
+          facturation_ttc?: number | null
           id?: string
           issue_date?: string
           number: string
+          paid_at?: string | null
           pdf_url?: string | null
           status?: string
           timesheet_id: string
+          tjm_final?: number | null
         }
         Update: {
           amount?: number
+          amount_cfa?: number | null
           client_id?: string
+          commission_amount?: number | null
           company_id?: string
+          conversion_rate?: number | null
           created_at?: string
           due_date?: string | null
+          facturation_ht?: number | null
+          facturation_net?: number | null
+          facturation_ttc?: number | null
           id?: string
           issue_date?: string
           number?: string
+          paid_at?: string | null
           pdf_url?: string | null
           status?: string
           timesheet_id?: string
+          tjm_final?: number | null
         }
         Relationships: [
           {
@@ -209,30 +285,52 @@ export type Database = {
       }
       timesheets: {
         Row: {
+          admin_id: string | null
           contract_id: string
           created_at: string
           id: string
           month: string
-          status: string
+          rejected_at: string | null
+          status: Database["public"]["Enums"]["timesheet_status"]
+          submitted_at: string | null
+          validated_at: string | null
           worked_days: number
+          year: number | null
         }
         Insert: {
+          admin_id?: string | null
           contract_id: string
           created_at?: string
           id?: string
           month: string
-          status?: string
+          rejected_at?: string | null
+          status?: Database["public"]["Enums"]["timesheet_status"]
+          submitted_at?: string | null
+          validated_at?: string | null
           worked_days: number
+          year?: number | null
         }
         Update: {
+          admin_id?: string | null
           contract_id?: string
           created_at?: string
           id?: string
           month?: string
-          status?: string
+          rejected_at?: string | null
+          status?: Database["public"]["Enums"]["timesheet_status"]
+          submitted_at?: string | null
+          validated_at?: string | null
           worked_days?: number
+          year?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "timesheets_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "timesheets_contract_id_fkey"
             columns: ["contract_id"]
@@ -296,6 +394,22 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_available_freelancers_for_client: {
+        Args: { client_uuid: string }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+          is_linked: boolean
+        }[]
+      }
+      get_linked_clients_for_freelancer: {
+        Args: { freelancer_uuid: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -306,7 +420,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      timesheet_status: "draft" | "submitted" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -433,6 +547,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      timesheet_status: ["draft", "submitted", "approved", "rejected"],
+    },
   },
 } as const

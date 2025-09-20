@@ -6,15 +6,18 @@ import { Button } from '../../components/ui/Button';
 import { TimesheetService, TimesheetWithRelations } from '../../lib/services/timesheets';
 
 const statusLabel = (status: string) => {
-  if (status === 'pending') return 'En attente';
-  if (status === 'approved') return 'Approuvée';
-  if (status === 'rejected') return 'Rejetée';
+  if (status === 'draft') return 'Brouillon';
+  if (status === 'submitted') return 'Soumis';
+  if (status === 'approved') return 'Approuvé';
+  if (status === 'rejected') return 'Rejeté';
   return status;
 };
 
 const statusBadgeClasses = (status: string) => {
   if (status === 'approved') return 'bg-green-100 text-green-800';
   if (status === 'rejected') return 'bg-red-100 text-red-800';
+  if (status === 'submitted') return 'bg-blue-100 text-blue-800';
+  if (status === 'draft') return 'bg-gray-100 text-gray-800';
   return 'bg-amber-100 text-amber-800';
 };
 
@@ -73,14 +76,6 @@ const AdminTimesheetsPage: React.FC = () => {
         return s;
       });
     }
-  };
-
-  // Optionnel : helper pour désactiver actions si status déjà approuvé/rejeté
-  const isActionDisabled = (ts: TimesheetWithRelations, action: 'approve' | 'reject') => {
-    if (updatingIds.has(ts.id)) return true;
-    if (action === 'approve' && ts.status === 'approved') return true;
-    if (action === 'reject' && ts.status === 'rejected') return true;
-    return false;
   };
 
   return (
@@ -152,7 +147,8 @@ const AdminTimesheetsPage: React.FC = () => {
 
                           <TableCell>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeClasses(ts.status)}`}>
-                              {ts.status === 'pending' && <AlertCircle className="w-3 h-3 mr-1" />}
+                              {ts.status === 'draft' && <Clock className="w-3 h-3 mr-1" />}
+                              {ts.status === 'submitted' && <AlertCircle className="w-3 h-3 mr-1" />}
                               {ts.status === 'approved' && <CheckCircle className="w-3 h-3 mr-1" />}
                               {ts.status === 'rejected' && <XCircle className="w-3 h-3 mr-1" />}
                               {statusLabel(ts.status)}
@@ -160,24 +156,47 @@ const AdminTimesheetsPage: React.FC = () => {
                           </TableCell>
 
                           <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                onClick={() => updateStatus(ts.id, 'approved')}
-                                disabled={isActionDisabled(ts, 'approve')}
-                                size="sm"
-                              >
-                                {updatingIds.has(ts.id) ? '...' : 'Valider'}
-                              </Button>
+                            {ts.status === 'submitted' ? (
+                              // CRA soumis - Afficher les boutons d'action
+                              <div className="flex space-x-2">
+                                <Button
+                                  onClick={() => updateStatus(ts.id, 'approved')}
+                                  disabled={updatingIds.has(ts.id)}
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                  {updatingIds.has(ts.id) ? '...' : 'Valider'}
+                                </Button>
 
-                              <Button
-                                onClick={() => updateStatus(ts.id, 'rejected')}
-                                variant="outline"
-                                disabled={isActionDisabled(ts, 'reject')}
-                                size="sm"
-                              >
-                                {updatingIds.has(ts.id) ? '...' : 'Rejeter'}
-                              </Button>
-                            </div>
+                                <Button
+                                  onClick={() => updateStatus(ts.id, 'rejected')}
+                                  variant="outline"
+                                  disabled={updatingIds.has(ts.id)}
+                                  size="sm"
+                                  className="border-red-300 text-red-700 hover:bg-red-50"
+                                >
+                                  {updatingIds.has(ts.id) ? '...' : 'Rejeter'}
+                                </Button>
+                              </div>
+                            ) : ts.status === 'approved' ? (
+                              // CRA approuvé - Afficher un indicateur positif
+                              <div className="flex items-center text-green-600">
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                <span className="text-sm font-medium">Validé</span>
+                              </div>
+                            ) : ts.status === 'rejected' ? (
+                              // CRA rejeté - Afficher un indicateur négatif  
+                              <div className="flex items-center text-red-600">
+                                <XCircle className="w-4 h-4 mr-2" />
+                                <span className="text-sm font-medium">Rejeté</span>
+                              </div>
+                            ) : (
+                              // CRA en brouillon - Afficher un message d'attente
+                              <div className="flex items-center text-gray-500">
+                                <Clock className="w-4 h-4 mr-2" />
+                                <span className="text-sm">En attente de soumission</span>
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))

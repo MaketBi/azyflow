@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { UserService } from '../../lib/services/users';
 import { TimesheetService, TimesheetWithRelations } from '../../lib/services/timesheets';
 import { InvoiceService, InvoiceWithRelations } from '../../lib/services/invoices';
-import { ContractService, ContractWithRelations } from '../../lib/services/contracts';
+import { ContractService } from '../../lib/services/contracts';
 
 export const DashboardPage: React.FC = () => {
   const [stats, setStats] = useState({
@@ -32,7 +32,7 @@ export const DashboardPage: React.FC = () => {
         ContractService.getAll(),
       ]);
 
-      const pendingTimesheets = timesheets.filter(t => t.status === 'pending').length;
+      const pendingTimesheets = timesheets.filter(t => t.status === 'submitted').length;
       const unpaidInvoices = invoices.filter(i => i.status === 'pending').length;
       const activeContracts = contracts.filter(c => c.status === 'active').length;
 
@@ -127,9 +127,9 @@ export const DashboardPage: React.FC = () => {
                         timesheet.status === 'rejected' ? 'bg-red-100 text-red-800' :
                         'bg-amber-100 text-amber-800'
                       }`}>
-                        {timesheet.status === 'pending' && <AlertCircle className="w-3 h-3 mr-1" />}
+                        {timesheet.status === 'submitted' && <AlertCircle className="w-3 h-3 mr-1" />}
                         {timesheet.status === 'approved' && <CheckCircle className="w-3 h-3 mr-1" />}
-                        {timesheet.status === 'pending' ? 'En attente' : timesheet.status === 'approved' ? 'Approuvée' : 'Rejetée'}
+                        {timesheet.status === 'submitted' ? 'En attente' : timesheet.status === 'approved' ? 'Approuvée' : 'Rejetée'}
                       </span>
                     </TableCell>
                   </TableRow>

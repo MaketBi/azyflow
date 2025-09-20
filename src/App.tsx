@@ -5,10 +5,14 @@ import { Navbar } from '../components/layout/Navbar';
 import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/admin/DashboardPage';
 import { TimesheetsPage } from '../pages/freelancer/TimesheetsPage';
+import { FreelancerContractsPage } from '../pages/freelancer/ContractsPage';
 import AdminTimesheetsPage from '../pages/admin/timesheets';
 import AdminFreelancersPage from '../pages/admin/freelancers';
 import ClientsPage from '../pages/admin/clients';
+import { ContractsPage } from '../pages/admin/ContractsPage';
 import FreelancerProfile from '../pages/admin/FreelancerProfile';
+import AdminInvoicesPage from '../pages/admin/invoices';
+import FreelancerInvoicesPage from '../pages/freelancer/invoices';
 
 // ✅ Ajout des routes auth
 import AuthCallback from '../pages/auth/callback';
@@ -67,12 +71,16 @@ function App() {
                 <Route path="/admin/timesheets" element={<AdminTimesheetsPage />} />
                 <Route path="/admin/freelancers" element={<AdminFreelancersPage />} />
                 <Route path="/admin/clients" element={<ClientsPage />} />
+                <Route path="/admin/contracts" element={<ContractsPage />} />
+                <Route path="/admin/invoices" element={<AdminInvoicesPage />} />
                  <Route path="/admin/freelancers/:id" element={<FreelancerProfile />} />
                 <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
               </>
             ) : (
               <>
                 <Route path="/freelancer/timesheets" element={<TimesheetsPage />} />
+                <Route path="/freelancer/contracts" element={<FreelancerContractsPage />} />
+                <Route path="/freelancer/invoices" element={<FreelancerInvoicesPage />} />
                 <Route path="/" element={<Navigate to="/freelancer/timesheets" replace />} />
               </>
             )}
