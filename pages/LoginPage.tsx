@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import SuccessModal from '../components/SuccessModal';
+import { useNavigate } from 'react-router-dom';
 import { AuthService } from '../lib/auth';
 import { CompanyService } from '../lib/services/companies';
 import { Button } from '../components/ui/Button';
@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 
 export const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +16,6 @@ export const LoginPage: React.FC = () => {
   const [companyName, setCompanyName] = useState('');
   const [companies, setCompanies] = useState<any[]>([]);
   const [error, setError] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Charger les sociétés si on est en inscription + rôle freelance
@@ -62,8 +62,8 @@ export const LoginPage: React.FC = () => {
           role,
           companyName.trim()
         );
-        // ✅ Succès → ouvrir le modal
-        setShowSuccess(true);
+        // ✅ Redirection vers la page de confirmation
+        navigate('/auth/registration-success');
         // Reset des champs
         setEmail('');
         setPassword('');
@@ -219,13 +219,6 @@ export const LoginPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* ✅ Modal premium */}
-      <SuccessModal
-        isOpen={showSuccess}
-        message="Vérifiez votre email pour confirmer votre compte."
-        onClose={() => setShowSuccess(false)}
-      />
     </div>
   );
 };

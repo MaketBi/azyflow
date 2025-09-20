@@ -37,9 +37,12 @@ export const Navbar: React.FC<NavbarProps> = ({ user, isAdmin }) => {
         <div className="flex justify-between h-16">
           {/* User Menu - Mobile : déplacé avant le logo pour être à droite */}
           <div className="flex items-center space-x-2 md:hidden order-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-violet-600 rounded-full flex items-center justify-center">
+            <Link 
+              to={isAdmin ? '/admin/profile' : '/freelancer/profile'}
+              className="w-8 h-8 bg-gradient-to-r from-blue-600 to-violet-600 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
+            >
               <User className="w-4 h-4 text-white" />
-            </div>
+            </Link>
             <Button
               variant="ghost"
               size="sm"
@@ -81,14 +84,17 @@ export const Navbar: React.FC<NavbarProps> = ({ user, isAdmin }) => {
 
           {/* User Menu - Desktop */}
           <div className="hidden md:flex items-center space-x-4 order-2">
-            <div className="flex items-center space-x-2">
+            <Link 
+              to={isAdmin ? '/admin/profile' : '/freelancer/profile'}
+              className="flex items-center space-x-2 hover:bg-gray-50 px-3 py-2 rounded-lg transition-colors"
+            >
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-violet-600 rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
               <span className="text-sm font-medium text-gray-700">
                 {user?.full_name}
               </span>
-            </div>
+            </Link>
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
               Déconnexion

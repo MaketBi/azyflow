@@ -17,6 +17,10 @@ import FreelancerInvoicesPage from '../pages/freelancer/invoices';
 // ✅ Ajout des routes auth
 import AuthCallback from '../pages/auth/callback';
 import SetPasswordPage from '../pages/auth/set-password';
+import { RegistrationSuccessPage } from '../pages/auth/RegistrationSuccessPage';
+
+// ✅ Ajout route profil
+import ProfilePage from '../pages/ProfilePage';
 
 function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -60,6 +64,7 @@ function App() {
             {/* ✅ Ajout simple des routes auth */}
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/set-password" element={<SetPasswordPage />} />
+            <Route path="/auth/registration-success" element={<RegistrationSuccessPage />} />
            
 
 
@@ -73,7 +78,8 @@ function App() {
                 <Route path="/admin/clients" element={<ClientsPage />} />
                 <Route path="/admin/contracts" element={<ContractsPage />} />
                 <Route path="/admin/invoices" element={<AdminInvoicesPage />} />
-                 <Route path="/admin/freelancers/:id" element={<FreelancerProfile />} />
+                <Route path="/admin/freelancers/:id" element={<FreelancerProfile />} />
+                <Route path="/admin/profile" element={<ProfilePage />} />
                 <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
               </>
             ) : (
@@ -81,6 +87,7 @@ function App() {
                 <Route path="/freelancer/timesheets" element={<TimesheetsPage />} />
                 <Route path="/freelancer/contracts" element={<FreelancerContractsPage />} />
                 <Route path="/freelancer/invoices" element={<FreelancerInvoicesPage />} />
+                <Route path="/freelancer/profile" element={<ProfilePage />} />
                 <Route path="/" element={<Navigate to="/freelancer/timesheets" replace />} />
               </>
             )}

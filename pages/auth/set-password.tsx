@@ -36,7 +36,7 @@ export default function SetPassword() {
     if (user.user_metadata?.role === "admin") {
       navigate("/admin/dashboard", { replace: true });
     } else {
-      navigate("/freelancer", { replace: true });
+      navigate("/freelancer/timesheets", { replace: true });
     }
   };
 

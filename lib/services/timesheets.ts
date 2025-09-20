@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { Database } from '../database';
+import { NotificationService, TimesheetNotificationData } from './notifications';
 
 export type Timesheet = Database['public']['Tables']['timesheets']['Row'];
 export type TimesheetInsert = Database['public']['Tables']['timesheets']['Insert'];
@@ -272,6 +273,14 @@ export class TimesheetService {
       throw new Error(`Erreur soumission CRA: ${error.message}`);
     }
 
+    // Envoyer notification à l'admin après création réussie
+    try {
+      await this.sendSubmissionNotification(result);
+    } catch (notificationError) {
+      console.error('Error sending submission notification:', notificationError);
+      // Ne pas faire échouer la création du CRA si la notification échoue
+    }
+
     return result;
   }
 
@@ -412,6 +421,14 @@ export class TimesheetService {
       throw new Error('Erreur lors de l\'approbation du timesheet');
     }
 
+    // Envoyer notification au freelancer après approbation réussie
+    try {
+      await this.sendApprovalNotification(data);
+    } catch (notificationError) {
+      console.error('Error sending approval notification:', notificationError);
+      // Ne pas faire échouer l'approbation si la notification échoue
+    }
+
     return data;
   }
 
@@ -451,6 +468,193 @@ export class TimesheetService {
       throw new Error('Erreur lors du rejet du timesheet');
     }
 
+    // Envoyer notification au freelancer après rejet
+    try {
+      await this.sendRejectionNotification(data);
+    } catch (notificationError) {
+      console.error('Error sending rejection notification:', notificationError);
+      // Ne pas faire échouer le rejet si la notification échoue
+    }
+
     return data;
+  }
+
+  /**
+   * Helper pour envoyer notification de soumission
+   */
+  private static async sendSubmissionNotification(timesheet: Timesheet): Promise<void> {
+    try {
+      // Récupérer les détails complets du timesheet avec relations
+      const { data: timesheetData, error } = await supabase
+        .from('timesheets')
+        .select(`
+          *,
+          contract:contracts (
+            *,
+            user:users (
+              id,
+              email,
+              full_name
+            ),
+            client:clients (
+              id,
+              name
+            ),
+            company:companies (
+              id,
+              name
+            )
+          )
+        `)
+        .eq('id', timesheet.id)
+        .single();
+
+      if (error || !timesheetData) {
+        throw new Error('Impossible de récupérer les détails du timesheet');
+      }
+
+      // Récupérer l'admin de la compagnie
+      const { data: adminData, error: adminError } = await supabase
+        .from('users')
+        .select('id, email, full_name')
+        .eq('company_id', timesheetData.contract.company.id)
+        .eq('role', 'admin')
+        .single();
+
+      if (adminError || !adminData) {
+        throw new Error('Impossible de trouver l\'admin de la compagnie');
+      }
+
+      // Préparer les données de notification
+      const notificationData: TimesheetNotificationData = {
+        freelancerName: timesheetData.contract.user.full_name,
+        freelancerEmail: timesheetData.contract.user.email,
+        adminName: adminData.full_name,
+        adminEmail: adminData.email,
+        clientName: timesheetData.contract.client.name,
+        month: timesheetData.month,
+        year: timesheetData.year || new Date().getFullYear(),
+        workedDays: timesheetData.worked_days,
+        timesheetId: timesheet.id
+      };
+
+      // Envoyer la notification
+      await NotificationService.notifyTimesheetSubmission(notificationData);
+    } catch (error) {
+      console.error('Error in sendSubmissionNotification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper pour envoyer notification de validation
+   */
+  private static async sendApprovalNotification(timesheet: Timesheet): Promise<void> {
+    try {
+      // Récupérer les détails complets du timesheet avec relations
+      const { data: timesheetData, error } = await supabase
+        .from('timesheets')
+        .select(`
+          *,
+          contract:contracts (
+            *,
+            user:users (
+              id,
+              email,
+              full_name
+            ),
+            client:clients (
+              id,
+              name
+            )
+          ),
+          admin:users!admin_id (
+            id,
+            email,
+            full_name
+          )
+        `)
+        .eq('id', timesheet.id)
+        .single();
+
+      if (error || !timesheetData) {
+        throw new Error('Impossible de récupérer les détails du timesheet');
+      }
+
+      // Préparer les données de notification
+      const notificationData: TimesheetNotificationData = {
+        freelancerName: timesheetData.contract.user.full_name,
+        freelancerEmail: timesheetData.contract.user.email,
+        adminName: timesheetData.admin?.full_name || 'Administrateur',
+        adminEmail: timesheetData.admin?.email || '',
+        clientName: timesheetData.contract.client.name,
+        month: timesheetData.month,
+        year: timesheetData.year || new Date().getFullYear(),
+        workedDays: timesheetData.worked_days,
+        timesheetId: timesheet.id
+      };
+
+      // Envoyer la notification
+      await NotificationService.notifyTimesheetApproval(notificationData);
+    } catch (error) {
+      console.error('Error in sendApprovalNotification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper pour envoyer notification de rejet
+   */
+  private static async sendRejectionNotification(timesheet: Timesheet, reason?: string): Promise<void> {
+    try {
+      // Récupérer les détails complets du timesheet avec relations
+      const { data: timesheetData, error } = await supabase
+        .from('timesheets')
+        .select(`
+          *,
+          contract:contracts (
+            *,
+            user:users (
+              id,
+              email,
+              full_name
+            ),
+            client:clients (
+              id,
+              name
+            )
+          ),
+          admin:users!admin_id (
+            id,
+            email,
+            full_name
+          )
+        `)
+        .eq('id', timesheet.id)
+        .single();
+
+      if (error || !timesheetData) {
+        throw new Error('Impossible de récupérer les détails du timesheet');
+      }
+
+      // Préparer les données de notification
+      const notificationData: TimesheetNotificationData = {
+        freelancerName: timesheetData.contract.user.full_name,
+        freelancerEmail: timesheetData.contract.user.email,
+        adminName: timesheetData.admin?.full_name || 'Administrateur',
+        adminEmail: timesheetData.admin?.email || '',
+        clientName: timesheetData.contract.client.name,
+        month: timesheetData.month,
+        year: timesheetData.year || new Date().getFullYear(),
+        workedDays: timesheetData.worked_days,
+        timesheetId: timesheet.id
+      };
+
+      // Envoyer la notification
+      await NotificationService.notifyTimesheetRejection(notificationData, reason);
+    } catch (error) {
+      console.error('Error in sendRejectionNotification:', error);
+      throw error;
+    }
   }
 }
