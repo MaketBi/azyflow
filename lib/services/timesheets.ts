@@ -138,6 +138,26 @@ export class TimesheetService {
   }
 
   /**
+   * Check if a timesheet already exists for a given month/year and contract
+   */
+  static async checkExistingTimesheet(contractId: string, month: string, year: number): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('timesheets')
+      .select('id')
+      .eq('contract_id', contractId)
+      .eq('month', month)
+      .eq('year', year)
+      .limit(1);
+
+    if (error) {
+      console.error('Error checking existing timesheet:', error);
+      return false;
+    }
+
+    return data.length > 0;
+  }
+
+  /**
    * Create timesheet as draft
    */
   static async createDraft(data: {
@@ -174,6 +194,12 @@ export class TimesheetService {
 
     if (!contract) {
       throw new Error('Aucun contrat actif trouvé pour ce client');
+    }
+
+    // Vérifier s'il existe déjà un CRA pour ce mois
+    const existingTimesheet = await this.checkExistingTimesheet(contract.id, data.month, data.year);
+    if (existingTimesheet) {
+      throw new Error(`Un CRA existe déjà pour ${data.month}/${data.year}. Vous ne pouvez créer qu'un seul CRA par mois.`);
     }
 
     const { data: result, error } = await supabase
@@ -220,6 +246,12 @@ export class TimesheetService {
 
     if (!contract) {
       throw new Error('Aucun contrat actif trouvé pour ce client');
+    }
+
+    // Vérifier s'il existe déjà un CRA pour ce mois
+    const existingTimesheet = await this.checkExistingTimesheet(contract.id, data.month, data.year);
+    if (existingTimesheet) {
+      throw new Error(`Un CRA existe déjà pour ${data.month}/${data.year}. Vous ne pouvez créer qu'un seul CRA par mois.`);
     }
 
     const { data: result, error } = await supabase

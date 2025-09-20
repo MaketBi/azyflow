@@ -86,6 +86,8 @@ export const TimesheetsPage: React.FC = () => {
       if (error instanceof Error) {
         if (error.message.includes('Aucun contrat actif trouvé')) {
           setError('Aucun contrat actif trouvé pour ce client. Veuillez contacter votre administrateur.');
+        } else if (error.message.includes('Un CRA existe déjà pour')) {
+          setError(error.message);
         } else {
           setError(`Erreur lors de la création du CRA : ${error.message}`);
         }
@@ -137,6 +139,8 @@ export const TimesheetsPage: React.FC = () => {
       if (error instanceof Error) {
         if (error.message.includes('Aucun contrat actif trouvé')) {
           setError('Aucun contrat actif trouvé pour ce client. Veuillez contacter votre administrateur.');
+        } else if (error.message.includes('Un CRA existe déjà pour')) {
+          setError(error.message);
         } else {
           setError(`Erreur lors de la soumission du CRA : ${error.message}`);
         }

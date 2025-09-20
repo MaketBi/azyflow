@@ -32,12 +32,16 @@ export interface InvoiceWithRelations extends Invoice {
 }
 
 export class InvoiceService {
+  /**
+   * Get all invoices for admin (only for their company's freelancers)
+   */
   static async getAll(): Promise<InvoiceWithRelations[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       throw new Error('Non authentifié');
     }
 
+    // RLS policy will handle filtering invoices based on user's company
     const { data, error } = await supabase
       .from('invoices')
       .select(`
@@ -65,12 +69,16 @@ export class InvoiceService {
     return data || [];
   }
 
+  /**
+   * Get invoices for current freelancer (only their own invoices)
+   */
   static async getByCurrentUser(): Promise<InvoiceWithRelations[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       throw new Error('Non authentifié');
     }
 
+    // RLS policy will ensure freelancers only see their own invoices
     const { data, error } = await supabase
       .from('invoices')
       .select(`
@@ -88,7 +96,6 @@ export class InvoiceService {
           )
         )
       `)
-      .eq('timesheet.contract.user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
