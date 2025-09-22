@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { Database } from '../database';
 import { NotificationService, TimesheetNotificationData } from './notifications';
+import { WorkflowDataHelper } from './workflow-data-helper';
 import { InvoiceService, InvoiceInsert } from './invoices';
 
 export type Timesheet = Database['public']['Tables']['timesheets']['Row'];
@@ -408,7 +409,7 @@ export class TimesheetService {
     // Verify admin role and get company_id
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('role, company_id')
+      .select('role, company_id, full_name')
       .eq('id', user.id)
       .single();
 
@@ -484,18 +485,27 @@ export class TimesheetService {
 
       await InvoiceService.create(invoiceData);
       console.log('Facture créée automatiquement pour le timesheet:', id);
+
+      // Envoyer nouvelle notification workflow: CRA validé + facture créée
+      try {
+        await WorkflowDataHelper.sendWorkflowNotification('timesheet_validated', id);
+      } catch (workflowNotificationError) {
+        console.error('Error sending workflow notification:', workflowNotificationError);
+        // Fallback à l'ancienne notification si la nouvelle échoue
+        try {
+          await this.sendApprovalNotification(data);
+        } catch (fallbackError) {
+          console.error('Error sending fallback notification:', fallbackError);
+        }
+      }
     } catch (invoiceError) {
       console.error('Error creating automatic invoice:', invoiceError);
-      // Ne pas faire échouer l'approbation si la création de facture échoue
-      // On peut notifier l'admin plus tard
-    }
-
-    // Envoyer notification au freelancer après approbation réussie
-    try {
-      await this.sendApprovalNotification(data);
-    } catch (notificationError) {
-      console.error('Error sending approval notification:', notificationError);
-      // Ne pas faire échouer l'approbation si la notification échoue
+      // Si échec création facture, on envoie quand même l'ancienne notification d'approbation
+      try {
+        await this.sendApprovalNotification(data);
+      } catch (notificationError) {
+        console.error('Error sending approval notification:', notificationError);
+      }
     }
 
     return data;

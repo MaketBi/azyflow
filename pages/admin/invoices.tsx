@@ -16,6 +16,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { InvoiceService, InvoiceWithRelations } from '../../lib/services/invoices';
 import { InvoicePreviewModal } from '../../components/invoices/InvoicePreviewModal';
+import { WorkflowDataHelper } from '../../lib/services/workflow-data-helper';
 
 const statusLabel = (status: string) => {
   switch (status) {
@@ -76,10 +77,26 @@ const AdminInvoicesPage: React.FC = () => {
     setUpdatingIds(prev => new Set([...prev, invoiceId]));
 
     try {
+      // Mettre à jour le statut de la facture
       await InvoiceService.updateStatus(invoiceId, newStatus);
+      
+      // Mettre à jour l'état local
       setInvoices(prev =>
         prev.map((inv) => (inv.id === invoiceId ? { ...inv, status: newStatus } : inv))
       );
+
+      // Envoyer la notification workflow appropriée
+      try {
+        if (newStatus === 'sent') {
+          await WorkflowDataHelper.sendWorkflowNotification('invoice_sent', undefined, invoiceId);
+        } else if (newStatus === 'paid') {
+          await WorkflowDataHelper.sendWorkflowNotification('payment_received', undefined, invoiceId);
+        }
+      } catch (notifError) {
+        console.error('Erreur notification workflow:', notifError);
+        // Ne pas faire échouer la mise à jour de statut si la notification échoue
+      }
+      
     } catch (err: any) {
       console.error('Erreur mise à jour statut:', err);
       setError(err?.message || 'Erreur lors de la mise à jour');

@@ -85,7 +85,7 @@ async function handleEmailNotification(emailData: EmailRequest, corsHeaders: any
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: emailData.from || 'Azyflow <onboarding@resend.dev>',
+        from: emailData.from || 'Azyflow <notifications@azyflow.com>',
         to: [emailData.to],
         subject: emailData.subject,
         html: emailData.html,

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { WorkflowStatus } from '../../lib/workflow-progress';
 import { InvoiceService } from '../../lib/services/invoices';
+import { WorkflowDataHelper } from '../../lib/services/workflow-data-helper';
 import { Button } from '../ui/Button';
 
 interface WorkflowActionButtonsProps {
@@ -39,6 +40,13 @@ export const WorkflowActionButtons: React.FC<WorkflowActionButtonsProps> = ({
             status: 'sent'
           });
           onStatusChange('invoice_sent');
+          
+          // Envoyer notification: Facture envoyée au client
+          try {
+            await WorkflowDataHelper.sendWorkflowNotification('invoice_sent', undefined, invoiceId);
+          } catch (notificationError) {
+            console.error('Erreur notification "invoice_sent":', notificationError);
+          }
           break;
 
         case 'mark_paid_by_client':
@@ -47,6 +55,13 @@ export const WorkflowActionButtons: React.FC<WorkflowActionButtonsProps> = ({
             paid_at: new Date().toISOString()
           });
           onStatusChange('payment_received_company');
+          
+          // Envoyer notification: Paiement reçu du client
+          try {
+            await WorkflowDataHelper.sendWorkflowNotification('payment_received', undefined, invoiceId);
+          } catch (notificationError) {
+            console.error('Erreur notification "payment_received":', notificationError);
+          }
           break;
 
         case 'pay_freelancer':
@@ -54,6 +69,13 @@ export const WorkflowActionButtons: React.FC<WorkflowActionButtonsProps> = ({
             status: 'paid_freelancer'
           });
           onStatusChange('paid_freelancer');
+          
+          // Envoyer notification: Freelancer payé - Workflow terminé
+          try {
+            await WorkflowDataHelper.sendWorkflowNotification('freelancer_paid', undefined, invoiceId);
+          } catch (notificationError) {
+            console.error('Error sending freelancer paid notification:', notificationError);
+          }
           break;
 
         default:

@@ -27,7 +27,7 @@ export interface WhatsAppNotification {
  * Service de notifications pour les CRA
  */
 export class NotificationService {
-  private static getAppUrl(): string {
+  protected static getAppUrl(): string {
     // Utiliser la variable d'environnement si disponible
     if (import.meta.env.VITE_APP_URL) {
       return import.meta.env.VITE_APP_URL;
@@ -181,9 +181,16 @@ export class NotificationService {
         </div>
         
         <div style="background: #f0fdf4; padding: 25px; border-radius: 8px; border-left: 4px solid #10b981;">
-          <h2 style="color: #065f46; margin: 0 0 20px 0; font-size: 20px;">
-            🎉 Félicitations ! Votre CRA a été validé
-          </h2>
+          <div style="display: flex; align-items: center; margin-bottom: 20px;">
+            <div style="width: 48px; height: 48px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);">
+              <div style="width: 24px; height: 24px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <span style="color: white; font-size: 14px; font-weight: bold;">✓</span>
+              </div>
+            </div>
+            <h2 style="color: #065f46; margin: 0; font-size: 20px;">
+              Votre CRA a été validé
+            </h2>
+          </div>
           
           <div style="background: white; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
             <h3 style="color: #10b981; margin: 0 0 15px 0; font-size: 16px;">Détails du CRA validé</h3>
@@ -357,9 +364,7 @@ export class NotificationService {
    */
   static async sendEmail(notification: EmailNotification): Promise<void> {
     try {
-      console.log('Sending email notification to:', notification.to);
-      
-      const { data, error } = await supabase.functions.invoke('send-notification', {
+      const { error } = await supabase.functions.invoke('send-notification', {
         body: {
           type: 'email',
           notification
@@ -370,8 +375,6 @@ export class NotificationService {
         console.error('Supabase function error:', error);
         throw new Error(`Erreur envoi email: ${error.message}`);
       }
-
-      console.log('Email sent successfully:', data);
     } catch (error) {
       console.error('Error sending email:', error);
       throw error;
