@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Input } from '../../components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
 import { TimesheetService, TimesheetWithRelations } from '../../lib/services/timesheets';
+import { WorkflowProgressBar } from '../../components/workflow/WorkflowProgressBar';
+import { WorkflowProgressBadge } from '../../components/workflow/WorkflowProgressBadge';
+import { determineWorkflowStatus } from '../../lib/workflow-progress';
 
 interface Client {
   id: string;
@@ -19,6 +22,7 @@ export const TimesheetsPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingTimesheet, setEditingTimesheet] = useState<TimesheetWithRelations | null>(null);
+  const [selectedTimesheet, setSelectedTimesheet] = useState<TimesheetWithRelations | null>(null);
   const [formData, setFormData] = useState({
     client_id: '',
     month: '',
@@ -513,11 +517,21 @@ export const TimesheetsPage: React.FC = () => {
                     <TableHead>Période</TableHead>
                     <TableHead>Jours</TableHead>
                     <TableHead>Statut</TableHead>
+                    <TableHead>Workflow</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {timesheets.map((timesheet) => (
+                  {timesheets.map((timesheet) => {
+                    const workflowStatus = determineWorkflowStatus(
+                      timesheet.status,
+                      timesheet.invoice?.status,
+                      !!timesheet.invoice,
+                      timesheet.invoice?.paid_at
+                    );
+                    const totalAmount = timesheet.worked_days * (timesheet.contract?.tjm || 0);
+                    
+                    return (
                     <TableRow key={timesheet.id}>
                       <TableCell>{timesheet.contract?.client?.name || 'N/A'}</TableCell>
                       <TableCell>{timesheet.month} {timesheet.year}</TableCell>
@@ -529,26 +543,42 @@ export const TimesheetsPage: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {timesheet.status === 'draft' && (
+                        <WorkflowProgressBadge 
+                          currentStatus={workflowStatus}
+                          amount={totalAmount}
+                          showPercentage={false}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {timesheet.status === 'draft' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditTimesheet(timesheet)}
+                              className="flex items-center gap-1"
+                            >
+                              <Edit className="h-3 w-3" />
+                              Modifier
+                            </Button>
+                          )}
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleEditTimesheet(timesheet)}
+                            variant="ghost"
+                            onClick={() => setSelectedTimesheet(timesheet)}
                             className="flex items-center gap-1"
                           >
-                            <Edit className="h-3 w-3" />
-                            Modifier
+                            <Calendar className="h-3 w-3" />
+                            Détails
                           </Button>
-                        )}
-                        {timesheet.status !== 'draft' && (
-                          <span className="text-xs text-gray-400">—</span>
-                        )}
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                   {timesheets.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                         Aucun CRA trouvé
                       </TableCell>
                     </TableRow>
@@ -559,6 +589,58 @@ export const TimesheetsPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de détail du workflow */}
+      {selectedTimesheet && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Suivi du workflow - {selectedTimesheet.contract?.client?.name}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedTimesheet.month} {selectedTimesheet.year} • {selectedTimesheet.worked_days} jours
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setSelectedTimesheet(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </Button>
+              </div>
+
+              <WorkflowProgressBar 
+                progress={{
+                  timesheetId: selectedTimesheet.id,
+                  currentStatus: determineWorkflowStatus(
+                    selectedTimesheet.status,
+                    selectedTimesheet.invoice?.status,
+                    !!selectedTimesheet.invoice,
+                    selectedTimesheet.invoice?.paid_at
+                  ),
+                  completedSteps: [], // Sera calculé automatiquement
+                  lastUpdateDate: selectedTimesheet.created_at,
+                  invoiceId: selectedTimesheet.invoice?.id,
+                  amount: selectedTimesheet.worked_days * (selectedTimesheet.contract?.tjm || 0)
+                }}
+              />
+
+              <div className="mt-6 flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedTimesheet(null)}
+                >
+                  Fermer
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { Database } from '../database';
 import { NotificationService, TimesheetNotificationData } from './notifications';
+import { InvoiceService, InvoiceInsert } from './invoices';
 
 export type Timesheet = Database['public']['Tables']['timesheets']['Row'];
 export type TimesheetInsert = Database['public']['Tables']['timesheets']['Insert'];
@@ -22,6 +23,11 @@ export type TimesheetWithRelations = Timesheet & {
     id: string;
     name: string;
   };
+  invoice?: {
+    id: string;
+    status: string;
+    paid_at: string | null;
+  } | null;
 };
 
 export class TimesheetService {
@@ -89,6 +95,11 @@ export class TimesheetService {
           client_id,
           client:clients(id, name),
           user:users(full_name)
+        ),
+        invoice:invoices(
+          id,
+          status,
+          paid_at
         )
       `)
       .eq('contract.user_id', user.id)
@@ -394,10 +405,10 @@ export class TimesheetService {
       throw new Error('Non authentifié');
     }
 
-    // Verify admin role
+    // Verify admin role and get company_id
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('role')
+      .select('role, company_id')
       .eq('id', user.id)
       .single();
 
@@ -405,6 +416,31 @@ export class TimesheetService {
       throw new Error('Accès non autorisé - Admin requis');
     }
 
+    if (!userData.company_id) {
+      throw new Error('Company ID manquant pour l\'utilisateur');
+    }
+
+    // Get timesheet with relations for invoice creation
+    const { data: timesheetData, error: timesheetError } = await supabase
+      .from('timesheets')
+      .select(`
+        *,
+        contract:contracts(
+          user:users(full_name, email),
+          client:clients(id, name, billing_email),
+          tjm,
+          commission_rate,
+          client_id
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (timesheetError || !timesheetData) {
+      throw new Error('Timesheet non trouvé');
+    }
+
+    // Update timesheet status
     const { data, error } = await supabase
       .from('timesheets')
       .update({ 
@@ -421,6 +457,39 @@ export class TimesheetService {
       throw new Error('Erreur lors de l\'approbation du timesheet');
     }
 
+    // Automatically create invoice when timesheet is approved
+    try {
+      const contract = timesheetData.contract;
+      if (!contract?.user?.full_name || !contract?.client?.id) {
+        throw new Error('Données de contrat insuffisantes pour créer la facture');
+      }
+
+      const totalAmount = timesheetData.worked_days * contract.tjm;
+      const commissionAmount = contract.commission_rate ? 
+        (totalAmount * contract.commission_rate / 100) : 0;
+      const netAmount = totalAmount - commissionAmount;
+
+      const invoiceData: InvoiceInsert = {
+        timesheet_id: id,
+        client_id: contract.client_id,
+        company_id: userData.company_id,
+        amount: totalAmount,
+        commission_amount: commissionAmount,
+        facturation_net: netAmount,
+        issue_date: new Date().toISOString(),
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 jours
+        status: 'draft',
+        number: await this.generateInvoiceNumber()
+      };
+
+      await InvoiceService.create(invoiceData);
+      console.log('Facture créée automatiquement pour le timesheet:', id);
+    } catch (invoiceError) {
+      console.error('Error creating automatic invoice:', invoiceError);
+      // Ne pas faire échouer l'approbation si la création de facture échoue
+      // On peut notifier l'admin plus tard
+    }
+
     // Envoyer notification au freelancer après approbation réussie
     try {
       await this.sendApprovalNotification(data);
@@ -430,6 +499,30 @@ export class TimesheetService {
     }
 
     return data;
+  }
+
+  /**
+   * Generate a unique invoice number
+   */
+  private static async generateInvoiceNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+    const month = String(new Date().getMonth() + 1).padStart(2, '0');
+    
+    // Get the count of invoices this month
+    const { count, error } = await supabase
+      .from('invoices')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', `${year}-${month}-01`)
+      .lt('created_at', `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-01`);
+
+    if (error) {
+      console.error('Error counting invoices:', error);
+      // Fallback to timestamp
+      return `INV-${year}${month}-${Date.now()}`;
+    }
+
+    const invoiceNumber = String((count || 0) + 1).padStart(3, '0');
+    return `INV-${year}${month}-${invoiceNumber}`;
   }
 
   /**
