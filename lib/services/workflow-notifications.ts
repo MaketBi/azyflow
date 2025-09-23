@@ -1,10 +1,13 @@
 import { NotificationService, EmailNotification } from './notifications';
+import { NotificationPreferencesService, NotificationType } from './notification-preferences';
 
 export interface WorkflowNotificationData {
   freelancerName: string;
   freelancerEmail: string;
   freelancerPhone?: string;
+  freelancerId?: string; // Ajouté pour vérifier les préférences
   adminName: string;
+  adminId?: string; // Ajouté pour vérifier les préférences
   clientName: string;
   month: number;
   year: number;
@@ -17,26 +20,76 @@ export interface WorkflowNotificationData {
 
 /**
  * Service dédié aux notifications workflow CRA → Facture → Paiement
+ * Intègre les préférences de notifications par utilisateur
  */
 export class WorkflowNotificationService extends NotificationService {
+
+  /**
+   * Envoyer une notification en respectant les préférences utilisateur
+   */
+  private static async sendNotificationWithPreferences(
+    userId: string | undefined,
+    notificationType: NotificationType,
+    emailData: {
+      to: string;
+      subject: string;
+      html: string;
+    },
+    whatsappData?: {
+      to: string;
+      message: string;
+    }
+  ): Promise<void> {
+    if (userId) {
+      // Vérifier préférences email
+      const shouldSendEmail = await NotificationPreferencesService.shouldSendNotification(
+        userId,
+        notificationType,
+        'email'
+      );
+      
+      if (shouldSendEmail) {
+        await this.sendEmail(emailData);
+      }
+
+      // Vérifier préférences WhatsApp
+      if (whatsappData) {
+        const shouldSendWhatsApp = await NotificationPreferencesService.shouldSendNotification(
+          userId,
+          notificationType,
+          'whatsapp'
+        );
+        
+        if (shouldSendWhatsApp) {
+          await this.sendWhatsApp(whatsappData);
+        }
+      }
+    } else {
+      // Fallback : envoyer sans vérification si pas d'ID utilisateur
+      await this.sendEmail(emailData);
+      if (whatsappData) {
+        await this.sendWhatsApp(whatsappData);
+      }
+    }
+  }
 
   /**
    * 📧 EMAIL: CRA validé + Facture générée automatiquement
    */
   static async notifyTimesheetValidatedWithInvoice(data: WorkflowNotificationData): Promise<void> {
     try {
-      // Envoyer email
       const emailNotification = this.getValidatedWithInvoiceEmailTemplate(data);
-      await this.sendEmail(emailNotification);
+      const whatsappData = data.freelancerPhone ? {
+        to: data.freelancerPhone,
+        message: this.getValidatedWithInvoiceWhatsAppMessage(data)
+      } : undefined;
 
-      // Envoyer WhatsApp si numéro disponible
-      if (data.freelancerPhone) {
-        const whatsappMessage = this.getValidatedWithInvoiceWhatsAppMessage(data);
-        await this.sendWhatsApp({
-          to: data.freelancerPhone,
-          message: whatsappMessage
-        });
-      }
+      await this.sendNotificationWithPreferences(
+        data.freelancerId,
+        'timesheet_validated',
+        emailNotification,
+        whatsappData
+      );
     } catch (error) {
       console.error('Error sending timesheet validated with invoice notification:', error);
       throw error;
@@ -48,18 +101,18 @@ export class WorkflowNotificationService extends NotificationService {
    */
   static async notifyInvoiceSentToClient(data: WorkflowNotificationData): Promise<void> {
     try {
-      // Envoyer email
       const emailNotification = this.getInvoiceSentEmailTemplate(data);
-      await this.sendEmail(emailNotification);
+      const whatsappData = data.freelancerPhone ? {
+        to: data.freelancerPhone,
+        message: this.getInvoiceSentWhatsAppMessage(data)
+      } : undefined;
 
-      // Envoyer WhatsApp si numéro disponible
-      if (data.freelancerPhone) {
-        const whatsappMessage = this.getInvoiceSentWhatsAppMessage(data);
-        await this.sendWhatsApp({
-          to: data.freelancerPhone,
-          message: whatsappMessage
-        });
-      }
+      await this.sendNotificationWithPreferences(
+        data.freelancerId,
+        'invoice_sent',
+        emailNotification,
+        whatsappData
+      );
     } catch (error) {
       console.error('Erreur dans notifyInvoiceSentToClient:', error);
       throw error;
@@ -71,18 +124,18 @@ export class WorkflowNotificationService extends NotificationService {
    */
   static async notifyPaymentReceivedFromClient(data: WorkflowNotificationData): Promise<void> {
     try {
-      // Envoyer email
       const emailNotification = this.getPaymentReceivedEmailTemplate(data);
-      await this.sendEmail(emailNotification);
+      const whatsappData = data.freelancerPhone ? {
+        to: data.freelancerPhone,
+        message: this.getPaymentReceivedWhatsAppMessage(data)
+      } : undefined;
 
-      // Envoyer WhatsApp si numéro disponible
-      if (data.freelancerPhone) {
-        const whatsappMessage = this.getPaymentReceivedWhatsAppMessage(data);
-        await this.sendWhatsApp({
-          to: data.freelancerPhone,
-          message: whatsappMessage
-        });
-      }
+      await this.sendNotificationWithPreferences(
+        data.freelancerId,
+        'payment_received',
+        emailNotification,
+        whatsappData
+      );
     } catch (error) {
       console.error('Error sending payment received notification:', error);
       throw error;
@@ -94,18 +147,18 @@ export class WorkflowNotificationService extends NotificationService {
    */
   static async notifyFreelancerPaid(data: WorkflowNotificationData): Promise<void> {
     try {
-      // Envoyer email
       const emailNotification = this.getFreelancerPaidEmailTemplate(data);
-      await this.sendEmail(emailNotification);
+      const whatsappData = data.freelancerPhone ? {
+        to: data.freelancerPhone,
+        message: this.getFreelancerPaidWhatsAppMessage(data)
+      } : undefined;
 
-      // Envoyer WhatsApp si numéro disponible
-      if (data.freelancerPhone) {
-        const whatsappMessage = this.getFreelancerPaidWhatsAppMessage(data);
-        await this.sendWhatsApp({
-          to: data.freelancerPhone,
-          message: whatsappMessage
-        });
-      }
+      await this.sendNotificationWithPreferences(
+        data.freelancerId,
+        'freelancer_paid',
+        emailNotification,
+        whatsappData
+      );
     } catch (error) {
       console.error('Error sending freelancer paid notification:', error);
       throw error;
@@ -447,7 +500,7 @@ export class WorkflowNotificationService extends NotificationService {
 
           <!-- Salutation -->
           <h1 style="color: #1f2937; font-size: 24px; margin-bottom: 16px;">
-            Félicitations ${data.freelancerName} ! 🎉
+            Paiement reçu ${data.freelancerName} ! 🎉
           </h1>
 
           <!-- Message principal -->

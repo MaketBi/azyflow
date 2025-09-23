@@ -5,19 +5,19 @@
 SELECT 
     conname as constraint_name,
     contype as constraint_type,
-    consrc as constraint_definition
+    pg_get_constraintdef(oid) as constraint_definition
 FROM pg_constraint 
 WHERE conrelid = 'invoices'::regclass 
 ORDER BY conname;
 
--- 2. Vérifier spécifiquement les contraintes CHECK sur le champ status
+-- 2. Identifier la contrainte CHECK sur la colonne status
 SELECT 
     conname as constraint_name,
-    consrc as constraint_definition
+    pg_get_constraintdef(oid) as constraint_definition
 FROM pg_constraint 
 WHERE conrelid = 'invoices'::regclass 
-    AND contype = 'c'  -- 'c' = CHECK constraint
-    AND (consrc LIKE '%status%' OR consrc LIKE '%pending%');
+    AND contype = 'c'  
+    AND pg_get_constraintdef(oid) LIKE '%status%';
 
 -- 3. Test simple : essayer d'insérer le nouveau statut
 -- (Cette requête échouera si la contrainte existe)

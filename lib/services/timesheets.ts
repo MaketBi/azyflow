@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { Database } from '../database';
 import { NotificationService, TimesheetNotificationData } from './notifications';
+import { NotificationPreferencesService } from './notification-preferences';
 import { WorkflowDataHelper } from './workflow-data-helper';
 import { InvoiceService, InvoiceInsert } from './invoices';
 
@@ -591,7 +592,7 @@ export class TimesheetService {
   }
 
   /**
-   * Helper pour envoyer notification de soumission
+   * Helper pour envoyer notification de soumission avec vérification des préférences
    */
   private static async sendSubmissionNotification(timesheet: Timesheet): Promise<void> {
     try {
@@ -636,13 +637,25 @@ export class TimesheetService {
         throw new Error('Impossible de trouver l\'admin de la compagnie');
       }
 
-      // Préparer les données de notification étendues avec le numéro de téléphone
-      const notificationData: TimesheetNotificationData & { adminPhone?: string } = {
+      // Vérifier les préférences de l'admin pour la notification "CRA soumis"
+      const shouldSendEmail = await NotificationPreferencesService.shouldSendNotification(
+        adminData.id,
+        'timesheet_submitted',
+        'email'
+      );
+
+      const shouldSendWhatsApp = adminData.phone ? await NotificationPreferencesService.shouldSendNotification(
+        adminData.id,
+        'timesheet_submitted',
+        'whatsapp'
+      ) : false;
+
+      // Préparer les données de notification
+      const notificationData: TimesheetNotificationData = {
         freelancerName: timesheetData.contract.user.full_name,
         freelancerEmail: timesheetData.contract.user.email,
         adminName: adminData.full_name,
         adminEmail: adminData.email,
-        adminPhone: adminData.phone || undefined,
         clientName: timesheetData.contract.client.name,
         month: timesheetData.month,
         year: timesheetData.year || new Date().getFullYear(),
@@ -650,8 +663,29 @@ export class TimesheetService {
         timesheetId: timesheet.id
       };
 
-      // Envoyer la notification avec support WhatsApp
-      await NotificationService.notifyTimesheetSubmission(notificationData);
+      // Envoyer seulement si les préférences l'autorisent
+      if (shouldSendEmail) {
+        await NotificationService.sendEmail({
+          to: adminData.email,
+          subject: `Nouveau CRA soumis par ${timesheetData.contract.user.full_name}`,
+          html: NotificationService.getSubmissionEmailTemplate(notificationData).html
+        });
+      }
+
+      if (shouldSendWhatsApp && adminData.phone) {
+        const whatsappMessage = `🔔 Nouveau CRA soumis\n\n` +
+          `Freelancer: ${timesheetData.contract.user.full_name}\n` +
+          `Client: ${timesheetData.contract.client.name}\n` +
+          `Période: ${timesheetData.month}/${timesheetData.year}\n` +
+          `Jours travaillés: ${timesheetData.worked_days}\n\n` +
+          `Veuillez vous connecter pour valider le CRA.`;
+
+        await NotificationService.sendWhatsApp({
+          to: adminData.phone,
+          message: whatsappMessage
+        });
+      }
+
     } catch (error) {
       console.error('Error in sendSubmissionNotification:', error);
       throw error;
@@ -659,7 +693,7 @@ export class TimesheetService {
   }
 
   /**
-   * Helper pour envoyer notification de validation
+   * Helper pour envoyer notification de validation avec vérification des préférences
    */
   private static async sendApprovalNotification(timesheet: Timesheet): Promise<void> {
     try {
@@ -694,11 +728,26 @@ export class TimesheetService {
         throw new Error('Impossible de récupérer les détails du timesheet');
       }
 
-      // Préparer les données de notification avec le numéro de téléphone du freelancer
-      const notificationData: TimesheetNotificationData & { freelancerPhone?: string } = {
+      const freelancerId = timesheetData.contract.user.id;
+
+      // Vérifier les préférences du freelancer pour la notification "CRA validé"
+      const shouldSendEmail = await NotificationPreferencesService.shouldSendNotification(
+        freelancerId,
+        'timesheet_validated',
+        'email'
+      );
+
+      const shouldSendWhatsApp = timesheetData.contract.user.phone ? 
+        await NotificationPreferencesService.shouldSendNotification(
+          freelancerId,
+          'timesheet_validated',
+          'whatsapp'
+        ) : false;
+
+      // Préparer les données de notification
+      const notificationData: TimesheetNotificationData = {
         freelancerName: timesheetData.contract.user.full_name,
         freelancerEmail: timesheetData.contract.user.email,
-        freelancerPhone: timesheetData.contract.user.phone || undefined,
         adminName: timesheetData.admin?.full_name || 'Administrateur',
         adminEmail: timesheetData.admin?.email || '',
         clientName: timesheetData.contract.client.name,
@@ -708,8 +757,28 @@ export class TimesheetService {
         timesheetId: timesheet.id
       };
 
-      // Envoyer la notification avec support WhatsApp
-      await NotificationService.notifyTimesheetApproval(notificationData);
+      // Envoyer seulement si les préférences l'autorisent
+      if (shouldSendEmail) {
+        await NotificationService.sendEmail({
+          to: timesheetData.contract.user.email,
+          subject: `CRA validé - ${timesheetData.contract.client.name}`,
+          html: NotificationService.getApprovalEmailTemplate(notificationData).html
+        });
+      }
+
+      if (shouldSendWhatsApp && timesheetData.contract.user.phone) {
+        const whatsappMessage = `✅ CRA validé !\n\n` +
+          `Client: ${timesheetData.contract.client.name}\n` +
+          `Période: ${timesheetData.month}/${timesheetData.year}\n` +
+          `Jours travaillés: ${timesheetData.worked_days}\n\n` +
+          `Votre CRA a été approuvé par l'administrateur.`;
+
+        await NotificationService.sendWhatsApp({
+          to: timesheetData.contract.user.phone,
+          message: whatsappMessage
+        });
+      }
+
     } catch (error) {
       console.error('Error in sendApprovalNotification:', error);
       throw error;
@@ -717,7 +786,7 @@ export class TimesheetService {
   }
 
   /**
-   * Helper pour envoyer notification de rejet
+   * Helper pour envoyer notification de rejet avec vérification des préférences
    */
   private static async sendRejectionNotification(timesheet: Timesheet, reason?: string): Promise<void> {
     try {
@@ -752,11 +821,26 @@ export class TimesheetService {
         throw new Error('Impossible de récupérer les détails du timesheet');
       }
 
-      // Préparer les données de notification avec le numéro de téléphone du freelancer
+      const freelancerId = timesheetData.contract.user.id;
+
+      // Vérifier les préférences du freelancer pour la notification "CRA rejeté"
+      const shouldSendEmail = await NotificationPreferencesService.shouldSendNotification(
+        freelancerId,
+        'timesheet_rejected',
+        'email'
+      );
+
+      const shouldSendWhatsApp = timesheetData.contract.user.phone ? 
+        await NotificationPreferencesService.shouldSendNotification(
+          freelancerId,
+          'timesheet_rejected',
+          'whatsapp'
+        ) : false;
+
+      // Préparer les données de notification
       const notificationData: TimesheetNotificationData = {
         freelancerName: timesheetData.contract.user.full_name,
         freelancerEmail: timesheetData.contract.user.email,
-        freelancerPhone: timesheetData.contract.user.phone || undefined,
         adminName: timesheetData.admin?.full_name || 'Administrateur',
         adminEmail: timesheetData.admin?.email || '',
         clientName: timesheetData.contract.client.name,
@@ -766,8 +850,29 @@ export class TimesheetService {
         timesheetId: timesheet.id
       };
 
-      // Envoyer la notification avec support WhatsApp
-      await NotificationService.notifyTimesheetRejection(notificationData, reason);
+      // Envoyer seulement si les préférences l'autorisent
+      if (shouldSendEmail) {
+        await NotificationService.sendEmail({
+          to: timesheetData.contract.user.email,
+          subject: `CRA rejeté - ${timesheetData.contract.client.name}`,
+          html: NotificationService.getRejectionEmailTemplate(notificationData, reason).html
+        });
+      }
+
+      if (shouldSendWhatsApp && timesheetData.contract.user.phone) {
+        const whatsappMessage = `❌ CRA rejeté\n\n` +
+          `Client: ${timesheetData.contract.client.name}\n` +
+          `Période: ${timesheetData.month}/${timesheetData.year}\n` +
+          `Jours travaillés: ${timesheetData.worked_days}\n\n` +
+          `Motif: ${reason || 'Aucun motif spécifié'}\n\n` +
+          `Veuillez corriger et resoumettre votre CRA.`;
+
+        await NotificationService.sendWhatsApp({
+          to: timesheetData.contract.user.phone,
+          message: whatsappMessage
+        });
+      }
+
     } catch (error) {
       console.error('Error in sendRejectionNotification:', error);
       throw error;

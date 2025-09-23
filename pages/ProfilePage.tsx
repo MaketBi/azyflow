@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Save, ArrowLeft } from 'lucide-react';
+import { User, Mail, Lock, Save, ArrowLeft, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { NotificationSettings } from '../components/settings/NotificationSettings';
 import { AuthService } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 
@@ -311,6 +312,28 @@ export const ProfilePage: React.FC = () => {
             </form>
           </CardContent>
         </Card>
+
+        {/* Section Préférences de notifications */}
+        {profile && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Préférences de notifications
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NotificationSettings
+                userId={profile.id}
+                userRole={profile.role as 'freelancer' | 'admin'}
+                onSave={(preferences) => {
+                  setSuccess('Préférences de notifications mises à jour avec succès');
+                  setTimeout(() => setSuccess(null), 3000);
+                }}
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
