@@ -283,6 +283,56 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          freelancer_paid: Json | null
+          id: string
+          invoice_overdue: Json | null
+          invoice_sent: Json | null
+          payment_received: Json | null
+          timesheet_rejected: Json | null
+          timesheet_submitted: Json | null
+          timesheet_validated: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          freelancer_paid?: Json | null
+          id?: string
+          invoice_overdue?: Json | null
+          invoice_sent?: Json | null
+          payment_received?: Json | null
+          timesheet_rejected?: Json | null
+          timesheet_submitted?: Json | null
+          timesheet_validated?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          freelancer_paid?: Json | null
+          id?: string
+          invoice_overdue?: Json | null
+          invoice_sent?: Json | null
+          payment_received?: Json | null
+          timesheet_rejected?: Json | null
+          timesheet_submitted?: Json | null
+          timesheet_validated?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timesheets: {
         Row: {
           admin_id: string | null
@@ -389,6 +439,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_default_notification_preferences: {
+        Args: { user_id_param: string }
+        Returns: {
+          created_at: string
+          freelancer_paid: Json
+          id: string
+          invoice_overdue: Json
+          invoice_sent: Json
+          payment_received: Json
+          timesheet_rejected: Json
+          timesheet_submitted: Json
+          timesheet_validated: Json
+          updated_at: string
+          user_id: string
+        }[]
+      }
       current_company_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -413,6 +479,22 @@ export type Database = {
           name: string
         }[]
       }
+      get_notification_preferences: {
+        Args: { user_id_param: string }
+        Returns: {
+          created_at: string
+          freelancer_paid: Json
+          id: string
+          invoice_overdue: Json
+          invoice_sent: Json
+          payment_received: Json
+          timesheet_rejected: Json
+          timesheet_submitted: Json
+          timesheet_validated: Json
+          updated_at: string
+          user_id: string
+        }[]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -420,6 +502,26 @@ export type Database = {
       is_same_company: {
         Args: { c_id: string }
         Returns: boolean
+      }
+      update_notification_preference: {
+        Args: {
+          channel_preferences: Json
+          notification_type: string
+          user_id_param: string
+        }
+        Returns: {
+          created_at: string
+          freelancer_paid: Json
+          id: string
+          invoice_overdue: Json
+          invoice_sent: Json
+          payment_received: Json
+          timesheet_rejected: Json
+          timesheet_submitted: Json
+          timesheet_validated: Json
+          updated_at: string
+          user_id: string
+        }[]
       }
     }
     Enums: {

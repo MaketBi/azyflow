@@ -91,7 +91,7 @@ export class NotificationPreferencesService {
       }
 
       // La fonction retourne un array, on prend le premier élément
-      return (data as NotificationPreferences[])?.[0] || null;
+      return (data as unknown as NotificationPreferences[])?.[0] || null;
     } catch (error) {
       console.error('Error fetching notification preferences:', error);
       return null;
@@ -108,7 +108,7 @@ export class NotificationPreferencesService {
 
       if (error) throw error;
       
-      return (data as NotificationPreferences[])?.[0];
+      return (data as unknown as NotificationPreferences[])?.[0];
     } catch (error) {
       console.error('Error creating default preferences:', error);
       throw error;
@@ -145,12 +145,12 @@ export class NotificationPreferencesService {
         .rpc('update_notification_preference', {
           user_id_param: userId,
           notification_type: notificationType,
-          channel_preferences: updatedChannelPrefs
+          channel_preferences: updatedChannelPrefs as any
         });
 
       if (error) throw error;
       
-      return (data as NotificationPreferences[])?.[0];
+      return (data as unknown as NotificationPreferences[])?.[0];
     } catch (error) {
       console.error('Error updating specific preference:', error);
       throw error;
@@ -177,7 +177,7 @@ export class NotificationPreferencesService {
           await supabase.rpc('update_notification_preference', {
             user_id_param: userId,
             notification_type: notificationType,
-            channel_preferences: channelPrefs
+            channel_preferences: channelPrefs as any
           });
         }
       }
@@ -240,7 +240,7 @@ export class NotificationPreferencesService {
         await supabase.rpc('update_notification_preference', {
           user_id_param: userId,
           notification_type: notificationType,
-          channel_preferences: defaultChannelPrefs
+          channel_preferences: defaultChannelPrefs as any
         });
       }
 
