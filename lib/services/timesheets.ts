@@ -488,7 +488,7 @@ export class TimesheetService {
         facturation_net: netAmount,
         issue_date: new Date().toISOString(),
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 jours
-        status: 'draft',
+        status: 'pending',
         number: await this.generateInvoiceNumber()
       };
 

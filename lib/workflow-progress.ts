@@ -133,7 +133,7 @@ export function determineWorkflowStatus(
       return 'invoice_sent';
     }
     
-    if (invoiceStatus === 'paid_by_client') {
+    if (invoiceStatus === 'paid') {
       return 'payment_received_company';
     }
     
