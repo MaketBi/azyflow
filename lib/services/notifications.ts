@@ -3,8 +3,10 @@ import { supabase } from '../supabase';
 export interface TimesheetNotificationData {
   freelancerName: string;
   freelancerEmail: string;
+  freelancerPhone?: string;
   adminName: string;
   adminEmail: string;
+  adminPhone?: string;
   clientName: string;
   month: string;
   year: number;
@@ -319,7 +321,7 @@ export class NotificationService {
                    `🔗 Valider: ${this.getAppUrl()}/admin/timesheets`;
 
     return {
-      to: '', // À configurer avec le numéro WhatsApp de l'admin
+      to: data.adminPhone || '', // Utiliser le numéro de téléphone de l'admin si disponible
       message
     };
   }
@@ -336,7 +338,7 @@ export class NotificationService {
                    `🔗 Voir mes CRA: ${this.getAppUrl()}/freelancer/timesheets`;
 
     return {
-      to: '', // À configurer avec le numéro WhatsApp du freelancer
+      to: data.freelancerPhone || '', // Utiliser le numéro de téléphone du freelancer
       message
     };
   }
@@ -354,7 +356,7 @@ export class NotificationService {
                    `🔗 Corriger: ${this.getAppUrl()}/freelancer/timesheets`;
 
     return {
-      to: '', // À configurer avec le numéro WhatsApp du freelancer
+      to: data.freelancerPhone || '', // Utiliser le numéro de téléphone du freelancer
       message
     };
   }
@@ -390,10 +392,8 @@ export class NotificationService {
         console.log('WhatsApp notification skipped: no phone number configured');
         return;
       }
-
-      console.log('Sending WhatsApp notification to:', notification.to);
       
-      const { data, error } = await supabase.functions.invoke('send-notification', {
+      const { data: _data, error } = await supabase.functions.invoke('send-notification', {
         body: {
           type: 'whatsapp',
           notification
@@ -404,8 +404,6 @@ export class NotificationService {
         console.error('WhatsApp function error:', error);
         throw new Error(`Erreur envoi WhatsApp: ${error.message}`);
       }
-
-      console.log('WhatsApp sent successfully:', data);
     } catch (error) {
       console.error('Error sending WhatsApp:', error);
       throw error;

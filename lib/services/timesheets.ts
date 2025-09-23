@@ -346,6 +346,14 @@ export class TimesheetService {
       throw new Error(`Erreur lors de la soumission: ${error.message}`);
     }
 
+    // Envoyer notification à l'admin après soumission réussie
+    try {
+      await this.sendSubmissionNotification(data);
+    } catch (notificationError) {
+      console.error('Error sending submission notification:', notificationError);
+      // Ne pas faire échouer la soumission du CRA si la notification échoue
+    }
+
     return data;
   }
 
@@ -616,10 +624,10 @@ export class TimesheetService {
         throw new Error('Impossible de récupérer les détails du timesheet');
       }
 
-      // Récupérer l'admin de la compagnie
+      // Récupérer l'admin de la compagnie avec son numéro de téléphone
       const { data: adminData, error: adminError } = await supabase
         .from('users')
-        .select('id, email, full_name')
+        .select('id, email, full_name, phone')
         .eq('company_id', timesheetData.contract.company.id)
         .eq('role', 'admin')
         .single();
@@ -628,12 +636,13 @@ export class TimesheetService {
         throw new Error('Impossible de trouver l\'admin de la compagnie');
       }
 
-      // Préparer les données de notification
-      const notificationData: TimesheetNotificationData = {
+      // Préparer les données de notification étendues avec le numéro de téléphone
+      const notificationData: TimesheetNotificationData & { adminPhone?: string } = {
         freelancerName: timesheetData.contract.user.full_name,
         freelancerEmail: timesheetData.contract.user.email,
         adminName: adminData.full_name,
         adminEmail: adminData.email,
+        adminPhone: adminData.phone || undefined,
         clientName: timesheetData.contract.client.name,
         month: timesheetData.month,
         year: timesheetData.year || new Date().getFullYear(),
@@ -641,7 +650,7 @@ export class TimesheetService {
         timesheetId: timesheet.id
       };
 
-      // Envoyer la notification
+      // Envoyer la notification avec support WhatsApp
       await NotificationService.notifyTimesheetSubmission(notificationData);
     } catch (error) {
       console.error('Error in sendSubmissionNotification:', error);
@@ -654,7 +663,7 @@ export class TimesheetService {
    */
   private static async sendApprovalNotification(timesheet: Timesheet): Promise<void> {
     try {
-      // Récupérer les détails complets du timesheet avec relations
+      // Récupérer les détails complets du timesheet avec relations ET le numéro de téléphone du freelancer
       const { data: timesheetData, error } = await supabase
         .from('timesheets')
         .select(`
@@ -664,7 +673,8 @@ export class TimesheetService {
             user:users (
               id,
               email,
-              full_name
+              full_name,
+              phone
             ),
             client:clients (
               id,
@@ -684,10 +694,11 @@ export class TimesheetService {
         throw new Error('Impossible de récupérer les détails du timesheet');
       }
 
-      // Préparer les données de notification
-      const notificationData: TimesheetNotificationData = {
+      // Préparer les données de notification avec le numéro de téléphone du freelancer
+      const notificationData: TimesheetNotificationData & { freelancerPhone?: string } = {
         freelancerName: timesheetData.contract.user.full_name,
         freelancerEmail: timesheetData.contract.user.email,
+        freelancerPhone: timesheetData.contract.user.phone || undefined,
         adminName: timesheetData.admin?.full_name || 'Administrateur',
         adminEmail: timesheetData.admin?.email || '',
         clientName: timesheetData.contract.client.name,
@@ -697,7 +708,7 @@ export class TimesheetService {
         timesheetId: timesheet.id
       };
 
-      // Envoyer la notification
+      // Envoyer la notification avec support WhatsApp
       await NotificationService.notifyTimesheetApproval(notificationData);
     } catch (error) {
       console.error('Error in sendApprovalNotification:', error);
@@ -710,7 +721,7 @@ export class TimesheetService {
    */
   private static async sendRejectionNotification(timesheet: Timesheet, reason?: string): Promise<void> {
     try {
-      // Récupérer les détails complets du timesheet avec relations
+      // Récupérer les détails complets du timesheet avec relations ET le numéro de téléphone du freelancer
       const { data: timesheetData, error } = await supabase
         .from('timesheets')
         .select(`
@@ -720,7 +731,8 @@ export class TimesheetService {
             user:users (
               id,
               email,
-              full_name
+              full_name,
+              phone
             ),
             client:clients (
               id,
@@ -740,10 +752,11 @@ export class TimesheetService {
         throw new Error('Impossible de récupérer les détails du timesheet');
       }
 
-      // Préparer les données de notification
+      // Préparer les données de notification avec le numéro de téléphone du freelancer
       const notificationData: TimesheetNotificationData = {
         freelancerName: timesheetData.contract.user.full_name,
         freelancerEmail: timesheetData.contract.user.email,
+        freelancerPhone: timesheetData.contract.user.phone || undefined,
         adminName: timesheetData.admin?.full_name || 'Administrateur',
         adminEmail: timesheetData.admin?.email || '',
         clientName: timesheetData.contract.client.name,
@@ -753,7 +766,7 @@ export class TimesheetService {
         timesheetId: timesheet.id
       };
 
-      // Envoyer la notification
+      // Envoyer la notification avec support WhatsApp
       await NotificationService.notifyTimesheetRejection(notificationData, reason);
     } catch (error) {
       console.error('Error in sendRejectionNotification:', error);

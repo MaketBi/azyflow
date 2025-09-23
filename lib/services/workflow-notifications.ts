@@ -3,6 +3,7 @@ import { NotificationService, EmailNotification } from './notifications';
 export interface WorkflowNotificationData {
   freelancerName: string;
   freelancerEmail: string;
+  freelancerPhone?: string;
   adminName: string;
   clientName: string;
   month: number;
@@ -24,8 +25,18 @@ export class WorkflowNotificationService extends NotificationService {
    */
   static async notifyTimesheetValidatedWithInvoice(data: WorkflowNotificationData): Promise<void> {
     try {
+      // Envoyer email
       const emailNotification = this.getValidatedWithInvoiceEmailTemplate(data);
       await this.sendEmail(emailNotification);
+
+      // Envoyer WhatsApp si numéro disponible
+      if (data.freelancerPhone) {
+        const whatsappMessage = this.getValidatedWithInvoiceWhatsAppMessage(data);
+        await this.sendWhatsApp({
+          to: data.freelancerPhone,
+          message: whatsappMessage
+        });
+      }
     } catch (error) {
       console.error('Error sending timesheet validated with invoice notification:', error);
       throw error;
@@ -37,8 +48,18 @@ export class WorkflowNotificationService extends NotificationService {
    */
   static async notifyInvoiceSentToClient(data: WorkflowNotificationData): Promise<void> {
     try {
+      // Envoyer email
       const emailNotification = this.getInvoiceSentEmailTemplate(data);
       await this.sendEmail(emailNotification);
+
+      // Envoyer WhatsApp si numéro disponible
+      if (data.freelancerPhone) {
+        const whatsappMessage = this.getInvoiceSentWhatsAppMessage(data);
+        await this.sendWhatsApp({
+          to: data.freelancerPhone,
+          message: whatsappMessage
+        });
+      }
     } catch (error) {
       console.error('Erreur dans notifyInvoiceSentToClient:', error);
       throw error;
@@ -50,8 +71,18 @@ export class WorkflowNotificationService extends NotificationService {
    */
   static async notifyPaymentReceivedFromClient(data: WorkflowNotificationData): Promise<void> {
     try {
+      // Envoyer email
       const emailNotification = this.getPaymentReceivedEmailTemplate(data);
       await this.sendEmail(emailNotification);
+
+      // Envoyer WhatsApp si numéro disponible
+      if (data.freelancerPhone) {
+        const whatsappMessage = this.getPaymentReceivedWhatsAppMessage(data);
+        await this.sendWhatsApp({
+          to: data.freelancerPhone,
+          message: whatsappMessage
+        });
+      }
     } catch (error) {
       console.error('Error sending payment received notification:', error);
       throw error;
@@ -63,8 +94,18 @@ export class WorkflowNotificationService extends NotificationService {
    */
   static async notifyFreelancerPaid(data: WorkflowNotificationData): Promise<void> {
     try {
+      // Envoyer email
       const emailNotification = this.getFreelancerPaidEmailTemplate(data);
       await this.sendEmail(emailNotification);
+
+      // Envoyer WhatsApp si numéro disponible
+      if (data.freelancerPhone) {
+        const whatsappMessage = this.getFreelancerPaidWhatsAppMessage(data);
+        await this.sendWhatsApp({
+          to: data.freelancerPhone,
+          message: whatsappMessage
+        });
+      }
     } catch (error) {
       console.error('Error sending freelancer paid notification:', error);
       throw error;
@@ -488,5 +529,90 @@ export class WorkflowNotificationService extends NotificationService {
       subject,
       html
     };
+  }
+
+  // ===============================
+  // TEMPLATES WHATSAPP
+  // ===============================
+
+  /**
+   * Template WhatsApp pour CRA validé + facture générée
+   */
+  static getValidatedWithInvoiceWhatsAppMessage(data: WorkflowNotificationData): string {
+    return `🎉 *CRA Validé !*
+
+✅ Votre CRA ${data.month}/${data.year} a été validé par ${data.adminName}
+📄 Facture ${data.invoiceNumber || 'générée'} automatiquement
+💰 Montant: ${data.amount.toFixed(2)}€
+📊 Client: ${data.clientName}
+
+🔄 *Workflow:*
+✅ CRA validé
+✅ Facture générée
+⏳ En attente envoi client
+
+Plus d'infos sur votre espace Azyflow.`;
+  }
+
+  /**
+   * Template WhatsApp pour facture envoyée au client
+   */
+  static getInvoiceSentWhatsAppMessage(data: WorkflowNotificationData): string {
+    return `📨 *Facture envoyée au client !*
+
+📄 Facture ${data.invoiceNumber || data.invoiceId} envoyée à ${data.clientName}
+💰 Montant: ${data.amount.toFixed(2)}€
+📅 Période: ${data.month}/${data.year}
+
+🔄 *Workflow:*
+✅ CRA validé
+✅ Facture générée  
+✅ Facture envoyée au client
+⏳ En attente paiement
+
+Votre facture est maintenant entre les mains du client !`;
+  }
+
+  /**
+   * Template WhatsApp pour paiement reçu du client
+   */
+  static getPaymentReceivedWhatsAppMessage(data: WorkflowNotificationData): string {
+    return `💰 *Paiement reçu !*
+
+✅ Le client ${data.clientName} a payé votre facture
+📄 Facture ${data.invoiceNumber || data.invoiceId}
+💰 Montant: ${data.amount.toFixed(2)}€
+📅 Période: ${data.month}/${data.year}
+
+🔄 *Workflow:*
+✅ CRA validé
+✅ Facture générée
+✅ Facture envoyée
+✅ Paiement reçu
+⏳ En attente de votre paiement
+
+Votre paiement sera traité sous peu !`;
+  }
+
+  /**
+   * Template WhatsApp pour freelancer payé
+   */
+  static getFreelancerPaidWhatsAppMessage(data: WorkflowNotificationData): string {
+    return `🎉 *Vous avez été payé !*
+
+💰 Votre paiement a été effectué
+📄 Facture ${data.invoiceNumber || data.invoiceId}
+💰 Montant: ${data.amount.toFixed(2)}€
+📅 Période: ${data.month}/${data.year}
+📊 Client: ${data.clientName}
+
+🔄 *Workflow terminé:*
+✅ CRA validé
+✅ Facture générée
+✅ Facture envoyée
+✅ Paiement reçu
+✅ Vous avez été payé
+
+Merci pour votre travail ! 🚀`;
   }
 }

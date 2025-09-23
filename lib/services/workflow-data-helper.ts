@@ -20,7 +20,7 @@ export class WorkflowDataHelper {
         .select(`
           *,
           contract:contracts(
-            user:users(full_name, email),
+            user:users(full_name, email, phone),
             client:clients(id, name),
             tjm,
             commission_rate
@@ -66,6 +66,7 @@ export class WorkflowDataHelper {
       const notificationData: WorkflowNotificationData = {
         freelancerName: contract.user.full_name,
         freelancerEmail: contract.user.email || '',
+        freelancerPhone: contract.user.phone || undefined,
         adminName: adminData?.full_name || 'Admin',
         clientName: contract.client.name,
         month: typeof timesheetData.month === 'number' ? timesheetData.month : new Date().getMonth() + 1,
@@ -99,7 +100,7 @@ export class WorkflowDataHelper {
             year,
             worked_days,
             contract:contracts(
-              user:users(full_name, email),
+              user:users(full_name, email, phone),
               client:clients(id, name),
               tjm
             )
@@ -141,6 +142,7 @@ export class WorkflowDataHelper {
       const notificationData: WorkflowNotificationData = {
         freelancerName: contract.user.full_name,
         freelancerEmail: contract.user.email || '',
+        freelancerPhone: contract.user.phone || undefined,
         adminName: adminData?.full_name || 'Admin',
         clientName: contract.client.name,
         month: typeof timesheet.month === 'number' ? timesheet.month : new Date().getMonth() + 1,

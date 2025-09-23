@@ -192,12 +192,12 @@ export class InvoiceService {
     return count || 0;
   }
 
-  static async updateStatus(id: string, status: 'pending' | 'sent' | 'paid' | 'overdue'): Promise<Invoice | null> {
+  static async updateStatus(id: string, status: 'pending' | 'sent' | 'paid' | 'paid_freelancer' | 'overdue'): Promise<Invoice | null> {
     const { data, error } = await supabase
       .from('invoices')
       .update({ 
         status,
-        ...(status === 'paid' ? { paid_at: new Date().toISOString() } : {})
+        ...(status === 'paid' || status === 'paid_freelancer' ? { paid_at: new Date().toISOString() } : {})
       })
       .eq('id', id)
       .select()

@@ -349,6 +349,7 @@ export type Database = {
           full_name: string
           id: string
           last_login: string | null
+          phone: string | null
           role: string
         }
         Insert: {
@@ -359,6 +360,7 @@ export type Database = {
           full_name: string
           id: string
           last_login?: string | null
+          phone?: string | null
           role?: string
         }
         Update: {
@@ -369,6 +371,7 @@ export type Database = {
           full_name?: string
           id?: string
           last_login?: string | null
+          phone?: string | null
           role?: string
         }
         Relationships: [

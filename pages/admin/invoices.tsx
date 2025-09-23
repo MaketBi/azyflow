@@ -22,7 +22,8 @@ const statusLabel = (status: string) => {
   switch (status) {
     case 'pending': return 'En attente';
     case 'sent': return 'Envoyée';
-    case 'paid': return 'Payée';
+    case 'paid': return 'Payée par client';
+    case 'paid_freelancer': return 'Freelancer payé';
     case 'overdue': return 'En retard';
     default: return status;
   }
@@ -30,6 +31,7 @@ const statusLabel = (status: string) => {
 
 const statusBadgeClasses = (status: string) => {
   switch (status) {
+    case 'paid_freelancer': return 'bg-emerald-100 text-emerald-800';
     case 'paid': return 'bg-green-100 text-green-800';
     case 'sent': return 'bg-blue-100 text-blue-800';
     case 'overdue': return 'bg-red-100 text-red-800';
@@ -39,7 +41,8 @@ const statusBadgeClasses = (status: string) => {
 
 const statusIcon = (status: string) => {
   switch (status) {
-    case 'paid': return <CheckCircle className="h-4 w-4" />;
+    case 'paid_freelancer': return <CheckCircle className="h-4 w-4" />;
+    case 'paid': return <DollarSign className="h-4 w-4" />;
     case 'sent': return <Mail className="h-4 w-4" />;
     case 'overdue': return <AlertCircle className="h-4 w-4" />;
     default: return <Clock className="h-4 w-4" />;
@@ -72,7 +75,7 @@ const AdminInvoicesPage: React.FC = () => {
     }
   };
 
-  const updateStatus = async (invoiceId: string, newStatus: 'pending' | 'sent' | 'paid' | 'overdue') => {
+  const updateStatus = async (invoiceId: string, newStatus: 'pending' | 'sent' | 'paid' | 'paid_freelancer' | 'overdue') => {
     setError(null);
     setUpdatingIds(prev => new Set([...prev, invoiceId]));
 
@@ -91,6 +94,8 @@ const AdminInvoicesPage: React.FC = () => {
           await WorkflowDataHelper.sendWorkflowNotification('invoice_sent', undefined, invoiceId);
         } else if (newStatus === 'paid') {
           await WorkflowDataHelper.sendWorkflowNotification('payment_received', undefined, invoiceId);
+        } else if (newStatus === 'paid_freelancer') {
+          await WorkflowDataHelper.sendWorkflowNotification('freelancer_paid', undefined, invoiceId);
         }
       } catch (notifError) {
         console.error('Erreur notification workflow:', notifError);
@@ -141,11 +146,14 @@ const AdminInvoicesPage: React.FC = () => {
   };
 
   const totalAmount = invoices.reduce((sum, inv) => sum + (inv.facturation_ttc || 0), 0);
-  const paidAmount = invoices
-    .filter(inv => inv.status === 'paid')
+  const paidByClientAmount = invoices
+    .filter(inv => inv.status === 'paid' || inv.status === 'paid_freelancer')
+    .reduce((sum, inv) => sum + (inv.facturation_ttc || 0), 0);
+  const freelancerPaidAmount = invoices
+    .filter(inv => inv.status === 'paid_freelancer')
     .reduce((sum, inv) => sum + (inv.facturation_ttc || 0), 0);
   const pendingAmount = invoices
-    .filter(inv => inv.status === 'pending')
+    .filter(inv => inv.status === 'pending' || inv.status === 'sent')
     .reduce((sum, inv) => sum + (inv.facturation_ttc || 0), 0);
 
   return (
@@ -185,10 +193,22 @@ const AdminInvoicesPage: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center">
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600">Payées</p>
-                <p className="text-2xl font-bold text-green-600">{paidAmount.toFixed(2)}€</p>
+                <p className="text-sm font-medium text-gray-600">Reçues clients</p>
+                <p className="text-2xl font-bold text-green-600">{paidByClientAmount.toFixed(2)}€</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-600">Versées freelancers</p>
+                <p className="text-2xl font-bold text-emerald-600">{freelancerPaidAmount.toFixed(2)}€</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-emerald-500" />
             </div>
           </CardContent>
         </Card>
@@ -284,11 +304,12 @@ const AdminInvoicesPage: React.FC = () => {
                                 value={invoice.status}
                                 onChange={(e) => updateStatus(invoice.id, e.target.value as any)}
                                 disabled={updatingIds.has(invoice.id)}
-                                className="text-xs border rounded px-1 py-0.5 max-w-24"
+                                className="text-xs border rounded px-1 py-0.5 max-w-32"
                               >
                                 <option value="pending">En attente</option>
                                 <option value="sent">Envoyée</option>
-                                <option value="paid">Payée</option>
+                                <option value="paid">Payée par client</option>
+                                <option value="paid_freelancer">Freelancer payé</option>
                                 <option value="overdue">En retard</option>
                               </select>
                             </div>

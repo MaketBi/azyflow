@@ -106,6 +106,34 @@ export class UserService {
   }
 
   /**
+   * Met à jour le numéro de téléphone d'un utilisateur
+   */
+  static async updateUserPhone(id: string, phone: string): Promise<User | null> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ phone })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Erreur lors de la mise à jour du téléphone:', error);
+        return null;
+      }
+
+      return data ? {
+        ...data,
+        active: data.active ?? false,
+        last_login: data.last_login ?? null,
+      } : null;
+    } catch (err) {
+      console.error('Exception updateUserPhone:', err);
+      return null;
+    }
+  }
+
+  /**
    * Get user by ID
    */
   static async getById(id: string): Promise<User | null> {

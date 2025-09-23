@@ -117,7 +117,7 @@ async function handleEmailNotification(emailData: EmailRequest, corsHeaders: any
     return new Response(
       JSON.stringify({ 
         error: 'Failed to send email',
-        details: error.message 
+        details: error instanceof Error ? error.message : 'Unknown error'
       }),
       { 
         status: 500, 
@@ -129,12 +129,12 @@ async function handleEmailNotification(emailData: EmailRequest, corsHeaders: any
 
 async function handleWhatsAppNotification(whatsappData: WhatsAppRequest, corsHeaders: any) {
   try {
-    // Configuration WhatsApp Business API (Twilio, WhatsApp Cloud API, etc.)
-    const WHATSAPP_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
-    const WHATSAPP_PHONE_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
+    // Configuration WasenderAPI
+    const WASENDER_API_URL = Deno.env.get('WASENDER_API_URL') || 'https://www.wasenderapi.com/api/send-message';
+    const WASENDER_API_KEY = Deno.env.get('WASENDER_API_KEY');
     
-    if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_ID) {
-      console.log('WhatsApp not configured, skipping WhatsApp notification');
+    if (!WASENDER_API_KEY) {
+      console.log('WasenderAPI not configured, skipping WhatsApp notification');
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -147,37 +147,43 @@ async function handleWhatsAppNotification(whatsappData: WhatsAppRequest, corsHea
       );
     }
 
-    // Envoyer message WhatsApp via Meta WhatsApp Business API
-    const response = await fetch(`https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_ID}/messages`, {
+    console.log('Sending WhatsApp via WasenderAPI:', { 
+      to: whatsappData.to, 
+      messageLength: whatsappData.message.length 
+    });
+
+    // Envoyer message WhatsApp via WasenderAPI
+    const response = await fetch(WASENDER_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+        'Authorization': `Bearer ${WASENDER_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: whatsappData.to.replace(/\D/g, ''), // Garder seulement les chiffres
-        type: 'text',
-        text: {
-          body: whatsappData.message
-        }
+        to: whatsappData.to,
+        text: whatsappData.message
       }),
     });
 
+    const result = await response.json();
+    
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('WhatsApp API error:', errorData);
-      throw new Error(`WhatsApp API error: ${response.status}`);
+      console.error('WasenderAPI error:', {
+        status: response.status,
+        statusText: response.statusText,
+        result
+      });
+      throw new Error(`WasenderAPI error: ${response.status} - ${result.message || result.error || 'Unknown error'}`);
     }
 
-    const result = await response.json();
-    console.log('WhatsApp message sent successfully:', result);
+    console.log('WhatsApp message sent successfully via WasenderAPI:', result);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        messageId: result.messages?.[0]?.id,
-        message: 'WhatsApp message sent successfully' 
+        messageId: result.data?.msgId || result.msgId || 'sent',
+        message: 'WhatsApp message sent successfully via WasenderAPI',
+        details: result
       }),
       { 
         status: 200, 
@@ -185,11 +191,12 @@ async function handleWhatsAppNotification(whatsappData: WhatsAppRequest, corsHea
       }
     );
   } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
+    console.error('Error sending WhatsApp message via WasenderAPI:', error);
     return new Response(
       JSON.stringify({ 
         error: 'Failed to send WhatsApp message',
-        details: error.message 
+        service: 'WasenderAPI',
+        details: error instanceof Error ? error.message : 'Unknown error'
       }),
       { 
         status: 500, 
