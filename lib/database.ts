@@ -138,10 +138,14 @@ export type Database = {
           currency: string | null
           end_date: string
           id: string
+          payment_terms: number | null
+          payment_terms_type: string | null
           start_date: string
           status: string
           tjm: number
           user_id: string
+          vat_applicable: boolean | null
+          vat_rate: number | null
         }
         Insert: {
           client_id: string
@@ -152,10 +156,14 @@ export type Database = {
           currency?: string | null
           end_date: string
           id?: string
+          payment_terms?: number | null
+          payment_terms_type?: string | null
           start_date: string
           status?: string
           tjm: number
           user_id: string
+          vat_applicable?: boolean | null
+          vat_rate?: number | null
         }
         Update: {
           client_id?: string
@@ -166,10 +174,14 @@ export type Database = {
           currency?: string | null
           end_date?: string
           id?: string
+          payment_terms?: number | null
+          payment_terms_type?: string | null
           start_date?: string
           status?: string
           tjm?: number
           user_id?: string
+          vat_applicable?: boolean | null
+          vat_rate?: number | null
         }
         Relationships: [
           {
@@ -195,10 +207,36 @@ export type Database = {
           },
         ]
       }
+      cron_logs: {
+        Row: {
+          created_at: string | null
+          function_name: string
+          id: string
+          response: string | null
+          status: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          function_name: string
+          id?: string
+          response?: string | null
+          status?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          function_name?: string
+          id?: string
+          response?: string | null
+          status?: number | null
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           amount: number
           amount_cfa: number | null
+          amount_ht: number | null
+          amount_ttc: number | null
           client_id: string
           commission_amount: number | null
           company_id: string
@@ -216,10 +254,14 @@ export type Database = {
           status: string
           timesheet_id: string
           tjm_final: number | null
+          vat_amount: number | null
+          vat_rate: number | null
         }
         Insert: {
           amount: number
           amount_cfa?: number | null
+          amount_ht?: number | null
+          amount_ttc?: number | null
           client_id: string
           commission_amount?: number | null
           company_id: string
@@ -237,10 +279,14 @@ export type Database = {
           status?: string
           timesheet_id: string
           tjm_final?: number | null
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Update: {
           amount?: number
           amount_cfa?: number | null
+          amount_ht?: number | null
+          amount_ttc?: number | null
           client_id?: string
           commission_amount?: number | null
           company_id?: string
@@ -258,6 +304,8 @@ export type Database = {
           status?: string
           timesheet_id?: string
           tjm_final?: number | null
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Relationships: [
           {
@@ -328,6 +376,47 @@ export type Database = {
             foreignKeyName: "notification_preferences_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timesheet_reminders: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_reminder_date: string | null
+          month: string
+          reminder_count: number | null
+          updated_at: string | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_reminder_date?: string | null
+          month: string
+          reminder_count?: number | null
+          updated_at?: string | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_reminder_date?: string | null
+          month?: string
+          reminder_count?: number | null
+          updated_at?: string | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheet_reminders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -502,6 +591,10 @@ export type Database = {
       is_same_company: {
         Args: { c_id: string }
         Returns: boolean
+      }
+      trigger_timesheet_reminders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       update_notification_preference: {
         Args: {

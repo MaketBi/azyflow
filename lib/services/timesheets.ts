@@ -4,6 +4,7 @@ import { NotificationService, TimesheetNotificationData } from './notifications'
 import { NotificationPreferencesService } from './notification-preferences';
 import { WorkflowDataHelper } from './workflow-data-helper';
 import { InvoiceService, InvoiceInsert } from './invoices';
+import { PaymentTermsHelper } from '../payment-terms-helper';
 
 export type Timesheet = Database['public']['Tables']['timesheets']['Row'];
 export type TimesheetInsert = Database['public']['Tables']['timesheets']['Insert'];
@@ -440,7 +441,11 @@ export class TimesheetService {
           client:clients(id, name, billing_email),
           tjm,
           commission_rate,
-          client_id
+          client_id,
+          payment_terms,
+          payment_terms_type,
+          vat_rate,
+          vat_applicable
         )
       `)
       .eq('id', id)
@@ -474,20 +479,41 @@ export class TimesheetService {
         throw new Error('Données de contrat insuffisantes pour créer la facture');
       }
 
-      const totalAmount = timesheetData.worked_days * contract.tjm;
-      const commissionAmount = contract.commission_rate ? 
-        (totalAmount * contract.commission_rate / 100) : 0;
-      const netAmount = totalAmount - commissionAmount;
+      // Utiliser PaymentTermsHelper pour les calculs français
+      const paymentTerms = {
+        days: contract.payment_terms || 30,
+        type: (contract.payment_terms_type as 'end_of_month' | 'net_days') || 'end_of_month'
+      };
+
+      const vatConfig = {
+        rate: contract.vat_rate || 20,
+        applicable: contract.vat_applicable ?? true
+      };
+
+      const commissionRate = contract.commission_rate || 0;
+      
+      // Calculer la facture complète avec TVA française et délais
+      const invoiceCalculation = PaymentTermsHelper.calculateFullInvoice(
+        timesheetData.worked_days,
+        contract.tjm,
+        paymentTerms,
+        vatConfig,
+        commissionRate
+      );
 
       const invoiceData: InvoiceInsert = {
         timesheet_id: id,
         client_id: contract.client_id,
         company_id: userData.company_id,
-        amount: totalAmount,
-        commission_amount: commissionAmount,
-        facturation_net: netAmount,
+        amount: invoiceCalculation.amountTTC, // Montant TTC
+        amount_ht: invoiceCalculation.amountHT,
+        amount_ttc: invoiceCalculation.amountTTC,
+        vat_amount: invoiceCalculation.vatAmount,
+        vat_rate: vatConfig.rate,
+        commission_amount: invoiceCalculation.commission,
+        facturation_net: invoiceCalculation.netAmount,
         issue_date: new Date().toISOString(),
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 jours
+        due_date: invoiceCalculation.dueDate.toISOString(),
         status: 'pending',
         number: await this.generateInvoiceNumber()
       };

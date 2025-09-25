@@ -31,6 +31,10 @@ export interface ContractFormData {
   currency?: string;
   contract_file_url?: string;
   status?: 'active' | 'expired' | 'renewed';
+  payment_terms?: number; // Délai de paiement en jours
+  payment_terms_type?: 'end_of_month' | 'net_days';
+  vat_rate?: number; // Taux TVA
+  vat_applicable?: boolean; // Si TVA applicable
 }
 
 export class ContractService {
@@ -167,6 +171,11 @@ export class ContractService {
       commission_rate: contractData.commission_rate || 15.00,
       currency: contractData.currency || 'EUR',
       status: contractData.status || 'active',
+      // Valeurs par défaut pour les délais de paiement français
+      payment_terms: contractData.payment_terms || 30,
+      payment_terms_type: contractData.payment_terms_type || 'end_of_month',
+      vat_rate: contractData.vat_rate || 20.00,
+      vat_applicable: contractData.vat_applicable ?? true
     };
 
     const { data, error } = await supabase

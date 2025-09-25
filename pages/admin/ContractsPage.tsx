@@ -13,6 +13,7 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
+import { PaymentTermsConfig } from '../../components/forms/PaymentTermsConfig';
 import { 
   ContractService, 
   ContractWithRelations, 
@@ -48,7 +49,11 @@ export const ContractsPage: React.FC = () => {
     end_date: '',
     commission_rate: 15.00,
     currency: 'EUR',
-    status: 'active'
+    status: 'active',
+    payment_terms: 30,
+    payment_terms_type: 'end_of_month',
+    vat_rate: 20.00,
+    vat_applicable: true
   });
 
   useEffect(() => {
@@ -83,7 +88,11 @@ export const ContractsPage: React.FC = () => {
       end_date: '',
       commission_rate: 15.00,
       currency: 'EUR',
-      status: 'active'
+      status: 'active',
+      payment_terms: 30,
+      payment_terms_type: 'end_of_month',
+      vat_rate: 20.00,
+      vat_applicable: true
     });
     setEditingContract(null);
     setError(null);
@@ -100,7 +109,11 @@ export const ContractsPage: React.FC = () => {
         end_date: contract.end_date,
         commission_rate: contract.commission_rate || 15.00,
         currency: contract.currency || 'EUR',
-        status: contract.status as 'active' | 'expired' | 'renewed'
+        status: contract.status as 'active' | 'expired' | 'renewed',
+        payment_terms: contract.payment_terms || 30,
+        payment_terms_type: (contract.payment_terms_type as 'end_of_month' | 'net_days') || 'end_of_month',
+        vat_rate: contract.vat_rate || 20.00,
+        vat_applicable: contract.vat_applicable ?? true
       });
     } else {
       resetForm();
@@ -473,6 +486,26 @@ export const ContractsPage: React.FC = () => {
                       <option value="renewed">Renouvelé</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Configuration des délais de paiement et TVA */}
+                <div className="mt-6">
+                  <PaymentTermsConfig
+                    initialPaymentTerms={formData.payment_terms}
+                    initialPaymentType={formData.payment_terms_type}
+                    initialVatRate={formData.vat_rate}
+                    initialVatApplicable={formData.vat_applicable}
+                    onChange={(config) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        payment_terms: config.payment_terms,
+                        payment_terms_type: config.payment_terms_type,
+                        vat_rate: config.vat_rate,
+                        vat_applicable: config.vat_applicable
+                      }));
+                    }}
+                    disabled={submitting}
+                  />
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">
