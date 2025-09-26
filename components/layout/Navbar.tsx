@@ -24,11 +24,9 @@ export const Navbar: React.FC<NavbarProps> = ({ user, isAdmin }) => {
   { name: 'Clients', href: '/admin/clients' },
   { name: 'Contrats', href: '/admin/contracts' },
   { name: 'Feuilles de temps (CRA)', href: '/admin/timesheets' },
-  { name: 'Factures', href: '/admin/invoices' },
   { name: 'Gestion des Paiements Freelancers', href: '/admin/billing' },
   ] : [
   { name: 'Feuilles de temps (CRA)', href: '/freelancer/timesheets' },
-  { name: 'Factures', href: '/freelancer/invoices' },
   { name: 'Contrats', href: '/freelancer/contracts' },
   ];
 
