@@ -13,6 +13,7 @@ import { ContractsPage } from '../pages/admin/ContractsPage';
 import FreelancerProfile from '../pages/admin/FreelancerProfile';
 import AdminInvoicesPage from '../pages/admin/invoices';
 import FreelancerInvoicesPage from '../pages/freelancer/invoices';
+import { BillingManagementPage } from '../pages/admin/BillingManagementPage';
 
 // ✅ Ajout des routes auth
 import AuthCallback from '../pages/auth/callback';
@@ -78,6 +79,7 @@ function App() {
                 <Route path="/admin/clients" element={<ClientsPage />} />
                 <Route path="/admin/contracts" element={<ContractsPage />} />
                 <Route path="/admin/invoices" element={<AdminInvoicesPage />} />
+                <Route path="/admin/billing" element={<BillingManagementPage />} />
                 <Route path="/admin/freelancers/:id" element={<FreelancerProfile />} />
                 <Route path="/admin/profile" element={<ProfilePage />} />
                 <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
