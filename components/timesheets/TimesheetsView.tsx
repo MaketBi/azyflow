@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, Clock, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, AlertCircle, XCircle, Eye } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../ui/Table';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { SearchBox } from '../ui/search';
 import { TimesheetService, TimesheetWithRelations } from '../../lib/services/timesheets';
+import TimesheetDetailModal from './TimesheetDetailModal';
 
 const statusLabel = (status: string) => {
   if (status === 'draft') return 'Brouillon';
@@ -29,6 +30,8 @@ const TimesheetsView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [selectedTimesheet, setSelectedTimesheet] = useState<TimesheetWithRelations | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     loadTimesheets();
@@ -66,36 +69,36 @@ const TimesheetsView: React.FC = () => {
     }
   };
 
-  const updateStatus = async (timesheetId: string, newStatus: 'approved' | 'rejected') => {
-    setError(null);
-    setUpdatingIds(prev => {
-      const s = new Set(prev);
-      s.add(timesheetId);
-      return s;
-    });
-
+  const updateStatus = async (timesheetId: string, newStatus: string) => {
+    setUpdatingIds(prev => new Set(prev).add(timesheetId));
+    
     try {
-      // Appel direct au service au lieu de l'API
       if (newStatus === 'approved') {
         await TimesheetService.approve(timesheetId);
-      } else {
+      } else if (newStatus === 'rejected') {
         await TimesheetService.reject(timesheetId);
       }
-
-      // Mise à jour locale immédiate (sans rechargement)
-      setTimesheets(prev =>
-        prev.map((t) => (t.id === timesheetId ? { ...t, status: newStatus } : t))
-      );
-    } catch (err: any) {
-      console.error('Erreur mise à jour statut:', err);
-      setError(err?.message || 'Erreur lors de la mise à jour');
+      await loadTimesheets(); // Rechargement des données
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut:', error);
+      setError('Erreur lors de la mise à jour du statut');
     } finally {
       setUpdatingIds(prev => {
-        const s = new Set(prev);
-        s.delete(timesheetId);
-        return s;
+        const updated = new Set(prev);
+        updated.delete(timesheetId);
+        return updated;
       });
     }
+  };
+
+  const handleViewTimesheet = (timesheet: TimesheetWithRelations) => {
+    setSelectedTimesheet(timesheet);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedTimesheet(null);
+    setIsModalOpen(false);
   };
 
   return (
@@ -143,14 +146,13 @@ const TimesheetsView: React.FC = () => {
                       <TableHead>Mois</TableHead>
                       <TableHead>Jours travaillés</TableHead>
                       <TableHead>Statut</TableHead>
+                      <TableHead>Voir</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
-                  </TableHeader>
-
-                  <TableBody>
+                  </TableHeader>                  <TableBody>
                     {filteredTimesheets.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
+                        <TableCell colSpan={6} className="text-center py-8">
                           <p className="text-gray-500">
                             {timesheetSearch 
                               ? `Aucune feuille de temps trouvée pour "${timesheetSearch}"` 
@@ -190,6 +192,18 @@ const TimesheetsView: React.FC = () => {
                               {ts.status === 'rejected' && <XCircle className="w-3 h-3 mr-1" />}
                               {statusLabel(ts.status)}
                             </span>
+                          </TableCell>
+
+                          <TableCell>
+                            <Button
+                              onClick={() => handleViewTimesheet(ts)}
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center space-x-2 text-blue-600 border-blue-300 hover:bg-blue-50"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>Voir</span>
+                            </Button>
                           </TableCell>
 
                           <TableCell>
@@ -245,6 +259,13 @@ const TimesheetsView: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de détail */}
+      <TimesheetDetailModal
+        timesheet={selectedTimesheet}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 };

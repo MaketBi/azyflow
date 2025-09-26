@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Save, ArrowLeft, Bell } from 'lucide-react';
+import { 
+  User, 
+  Mail, 
+  Save, 
+  ArrowLeft, 
+  Bell, 
+  Shield, 
+  Calendar,
+  Settings,
+  Key
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { NotificationSettings } from '../components/settings/NotificationSettings';
+import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
+import { NotificationModal } from '../components/profile/NotificationModal';
 import { AuthService } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 
@@ -27,11 +38,12 @@ export const ProfilePage: React.FC = () => {
   
   const [formData, setFormData] = useState({
     full_name: '',
-    email: '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    email: ''
   });
+  
+  // États pour les modals
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -44,10 +56,7 @@ export const ProfilePage: React.FC = () => {
         setProfile(userProfile);
         setFormData({
           full_name: userProfile.full_name || '',
-          email: userProfile.email || '',
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
+          email: userProfile.email || ''
         });
       }
     } catch (error) {
@@ -67,12 +76,10 @@ export const ProfilePage: React.FC = () => {
     try {
       // Mise à jour du nom
       if (formData.full_name !== profile?.full_name && profile?.id) {
-        const { data: userData, error: userError } = await supabase
+        const { error: userError } = await supabase
           .from('users')
           .update({ full_name: formData.full_name })
-          .eq('id', profile.id)
-          .select()
-          .single();
+          .eq('id', profile.id);
 
         if (userError) {
           throw new Error('Erreur lors de la mise à jour du profil');
@@ -99,32 +106,7 @@ export const ProfilePage: React.FC = () => {
         }
       }
 
-      // Mise à jour du mot de passe
-      if (formData.newPassword) {
-        if (formData.newPassword !== formData.confirmPassword) {
-          throw new Error('Les mots de passe ne correspondent pas');
-        }
 
-        if (formData.newPassword.length < 6) {
-          throw new Error('Le mot de passe doit contenir au moins 6 caractères');
-        }
-
-        const { error: passwordError } = await supabase.auth.updateUser({
-          password: formData.newPassword
-        });
-
-        if (passwordError) {
-          throw new Error('Erreur lors de la mise à jour du mot de passe');
-        }
-
-        // Réinitialiser les champs de mot de passe
-        setFormData(prev => ({
-          ...prev,
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        }));
-      }
 
       setSuccess('Profil mis à jour avec succès');
       
@@ -155,11 +137,37 @@ export const ProfilePage: React.FC = () => {
     return role === 'admin' ? 'Administrateur' : 'Freelancer';
   };
 
+  const getRoleBadge = (role: string) => {
+    if (role === 'admin') {
+      return (
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 border border-purple-200">
+          <Shield className="w-4 h-4 mr-2" />
+          Administrateur
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">
+        <User className="w-4 h-4 mr-2" />
+        Freelancer
+      </span>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center">Chargement...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement du profil...</p>
         </div>
       </div>
     );
@@ -167,88 +175,111 @@ export const ProfilePage: React.FC = () => {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50 px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center text-red-600">
-            Erreur : Profil non trouvé
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Profil introuvable</h2>
+          <p className="text-gray-600 mb-4">Une erreur s'est produite lors du chargement de votre profil.</p>
+          <Button onClick={handleGoBack}>
+            Retour au dashboard
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={handleGoBack}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mon profil</h1>
-            <p className="text-gray-600">Gérez vos informations personnelles</p>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGoBack}
+                className="flex items-center space-x-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Retour</span>
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
+                  <Settings className="w-8 h-8 text-blue-600" />
+                  <span>Mon profil</span>
+                </h1>
+                <p className="text-gray-600 mt-1">Gérez vos informations personnelles et préférences</p>
+              </div>
+            </div>
+            {getRoleBadge(profile.role)}
           </div>
         </div>
 
-        {/* Informations générales */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Informations du compte
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rôle
-                </label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-700">
-                  {getRoleLabel(profile.role)}
+        {/* Section principale */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Informations du compte */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <User className="w-5 h-5 text-blue-600" />
+                <span>Informations du compte</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <Mail className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Email</p>
+                  <p className="text-gray-900">{profile.email}</p>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Membre depuis
-                </label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-700">
-                  {new Date(profile.created_at).toLocaleDateString('fr-FR')}
+              <div className="flex items-center space-x-3">
+                <Shield className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Rôle</p>
+                  <p className="text-gray-900">{getRoleLabel(profile.role)}</p>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Formulaire de modification */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Modifier les informations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="flex items-center space-x-3">
+                <Calendar className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Membre depuis</p>
+                  <p className="text-gray-900">{formatDate(profile.created_at)}</p>
+                </div>
               </div>
-            )}
-
-            {success && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-sm text-green-600">{success}</p>
+              <div className="flex items-center space-x-3">
+                <User className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Nom complet</p>
+                  <p className="text-gray-900">{profile.full_name}</p>
+                </div>
               </div>
-            )}
+            </CardContent>
+          </Card>
 
-            <form onSubmit={handleUpdateProfile} className="space-y-6">
-              {/* Informations personnelles */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Informations personnelles</h3>
-                
+          {/* Modifier les informations personnelles */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <User className="w-5 h-5 text-indigo-600" />
+                <span>Modifier les informations</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
+              {success && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-sm text-green-600">{success}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <Input
                   label="Nom complet"
                   type="text"
@@ -264,76 +295,97 @@ export const ProfilePage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                 />
-              </div>
 
-              {/* Modification du mot de passe */}
-              <div className="space-y-4 border-t pt-6">
-                <h3 className="text-lg font-medium text-gray-900">Changer le mot de passe</h3>
-                <p className="text-sm text-gray-600">
-                  Laissez vide si vous ne souhaitez pas changer votre mot de passe
-                </p>
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="submit"
+                    disabled={updating}
+                    className="flex items-center gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    {updating ? 'Mise à jour...' : 'Sauvegarder'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
 
-                <Input
-                  label="Nouveau mot de passe"
-                  type="password"
-                  value={formData.newPassword}
-                  onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                  placeholder="Minimum 6 caractères"
-                />
-
-                <Input
-                  label="Confirmer le nouveau mot de passe"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  placeholder="Répétez le nouveau mot de passe"
-                />
-              </div>
-
-              {/* Boutons d'action */}
-              <div className="flex gap-3 pt-4">
-                <Button
-                  type="submit"
-                  disabled={updating}
-                  className="flex items-center gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  {updating ? 'Mise à jour...' : 'Sauvegarder les modifications'}
-                </Button>
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleGoBack}
-                >
-                  Annuler
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Section Préférences de notifications */}
+        {/* Actions et préférences */}
         {profile && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Préférences de notifications
+              <CardTitle className="flex items-center space-x-2">
+                <Settings className="w-5 h-5 text-gray-600" />
+                <span>Actions et préférences</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <NotificationSettings
-                userId={profile.id}
-                userRole={profile.role as 'freelancer' | 'admin'}
-                onSave={(preferences) => {
-                  setSuccess('Préférences de notifications mises à jour avec succès');
-                  setTimeout(() => setSuccess(null), 3000);
-                }}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Sécurité */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Key className="w-5 h-5 text-red-600" />
+                    <h3 className="font-medium text-gray-900">Sécurité</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Gérez la sécurité de votre compte
+                  </p>
+                  <Button
+                    onClick={() => setShowPasswordModal(true)}
+                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 w-full"
+                  >
+                    <Key className="h-4 w-4" />
+                    Changer le mot de passe
+                  </Button>
+                </div>
+
+                {/* Notifications */}
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Bell className="w-5 h-5 text-orange-600" />
+                    <h3 className="font-medium text-gray-900">Notifications</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Configurez vos préférences de notifications
+                  </p>
+                  <Button
+                    onClick={() => setShowNotificationModal(true)}
+                    className="flex items-center gap-2 w-full"
+                  >
+                    <Bell className="h-4 w-4" />
+                    Gérer les notifications
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Modals */}
+        <ChangePasswordModal
+          isOpen={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+          onSuccess={(message) => {
+            setSuccess(message);
+            setTimeout(() => setSuccess(null), 3000);
+          }}
+          onError={(message) => {
+            setError(message);
+            setTimeout(() => setError(null), 3000);
+          }}
+        />
+
+        <NotificationModal
+          isOpen={showNotificationModal}
+          onClose={() => setShowNotificationModal(false)}
+          userId={profile.id}
+          userRole={profile.role as 'freelancer' | 'admin'}
+          onSuccess={(message) => {
+            setSuccess(message);
+            setTimeout(() => setSuccess(null), 3000);
+          }}
+        />
       </div>
     </div>
   );
