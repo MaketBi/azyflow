@@ -12,6 +12,7 @@ import {
 import { Button } from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Input } from '../ui/Input';
+import { SearchBox } from '../ui/search';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/Table';
 import { PaymentTermsConfig } from '../forms/PaymentTermsConfig';
 import { 
@@ -33,6 +34,8 @@ interface Client {
 
 const ContractsView: React.FC = () => {
   const [contracts, setContracts] = useState<ContractWithRelations[]>([]);
+  const [filteredContracts, setFilteredContracts] = useState<ContractWithRelations[]>([]);
+  const [contractSearch, setContractSearch] = useState<string>('');
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +63,23 @@ const ContractsView: React.FC = () => {
     loadData();
   }, []);
 
+  // Effet pour filtrer les contrats selon la recherche
+  useEffect(() => {
+    if (!contractSearch.trim()) {
+      setFilteredContracts(contracts);
+    } else {
+      const searchTerm = contractSearch.toLowerCase();
+      const filtered = contracts.filter(contract => 
+        (contract.user?.full_name?.toLowerCase() || '').includes(searchTerm) ||
+        (contract.client?.name?.toLowerCase() || '').includes(searchTerm) ||
+        (contract.tjm?.toString() || '').includes(searchTerm) ||
+        (contract.commission_rate?.toString() || '').includes(searchTerm) ||
+        (contract.currency?.toLowerCase() || '').includes(searchTerm)
+      );
+      setFilteredContracts(filtered);
+    }
+  }, [contracts, contractSearch]);
+
   const loadData = async () => {
     try {
       const [contractsData, freelancersData, clientsData] = await Promise.all([
@@ -69,6 +89,7 @@ const ContractsView: React.FC = () => {
       ]);
 
       setContracts(contractsData);
+      setFilteredContracts(contractsData);
       setFreelancers(freelancersData);
       setClients(clientsData);
     } catch (error) {
@@ -208,6 +229,15 @@ const ContractsView: React.FC = () => {
         </Button>
       </div>
 
+      {/* Champ de recherche pour les contrats */}
+      <SearchBox
+        value={contractSearch}
+        onChange={setContractSearch}
+        placeholder="Rechercher par freelancer, client, TJM ou commission..."
+        label="Rechercher un contrat"
+        icon="📋"
+      />
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -215,7 +245,13 @@ const ContractsView: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Contrats</p>
-                <p className="text-2xl font-bold text-gray-900">{contracts.length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {filteredContracts.length}
+                  {contractSearch && ` / ${contracts.length}`}
+                </p>
+                {contractSearch && (
+                  <p className="text-xs text-blue-600 mt-1">Filtré pour: {contractSearch}</p>
+                )}
               </div>
               <FileText className="h-8 w-8 text-blue-500" />
             </div>
@@ -228,8 +264,11 @@ const ContractsView: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Contrats Actifs</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {contracts.filter(c => c.status === 'active').length}
+                  {filteredContracts.filter(c => c.status === 'active').length}
                 </p>
+                {contractSearch && (
+                  <p className="text-xs text-blue-600 mt-1">Dans la sélection</p>
+                )}
               </div>
               <Calendar className="h-8 w-8 text-green-500" />
             </div>
@@ -242,11 +281,14 @@ const ContractsView: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">TJM Moyen</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {contracts.length > 0 
-                    ? formatCurrency(contracts.reduce((sum, c) => sum + c.tjm, 0) / contracts.length)
+                  {filteredContracts.length > 0 
+                    ? formatCurrency(filteredContracts.reduce((sum, c) => sum + c.tjm, 0) / filteredContracts.length)
                     : formatCurrency(0)
                   }
                 </p>
+                {contractSearch && (
+                  <p className="text-xs text-blue-600 mt-1">Moyenne filtrée</p>
+                )}
               </div>
               <DollarSign className="h-8 w-8 text-purple-500" />
             </div>
@@ -259,8 +301,11 @@ const ContractsView: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Freelances Actifs</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {new Set(contracts.filter(c => c.status === 'active').map(c => c.user_id)).size}
+                  {new Set(filteredContracts.filter(c => c.status === 'active').map(c => c.user_id)).size}
                 </p>
+                {contractSearch && (
+                  <p className="text-xs text-blue-600 mt-1">Dans la sélection</p>
+                )}
               </div>
               <Users className="h-8 w-8 text-orange-500" />
             </div>
@@ -289,7 +334,19 @@ const ContractsView: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contracts.map((contract) => (
+                {filteredContracts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <p className="text-gray-500">
+                        {contractSearch 
+                          ? `Aucun contrat trouvé pour "${contractSearch}"` 
+                          : 'Aucun contrat trouvé'
+                        }
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredContracts.map((contract) => (
                   <TableRow key={contract.id}>
                     <TableCell>
                       <div>
@@ -325,13 +382,7 @@ const ContractsView: React.FC = () => {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
-                {contracts.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                      Aucun contrat trouvé
-                    </TableCell>
-                  </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>

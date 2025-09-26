@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { UserService, Freelancer } from '../../lib/services/users';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/Button';
+import { SearchBox } from '../ui/search';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../ui/Table';
 
 const getStatusLabel = (user: Freelancer) => {
@@ -19,6 +20,8 @@ const getStatusLabel = (user: Freelancer) => {
 
 const FreelancersView: React.FC = () => {
   const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
+  const [filteredFreelancers, setFilteredFreelancers] = useState<Freelancer[]>([]);
+  const [freelancerSearch, setFreelancerSearch] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -32,12 +35,27 @@ const FreelancersView: React.FC = () => {
     fetchFreelancers();
   }, []);
 
+  // Effet pour filtrer les freelancers selon la recherche
+  useEffect(() => {
+    if (!freelancerSearch.trim()) {
+      setFilteredFreelancers(freelancers);
+    } else {
+      const searchTerm = freelancerSearch.toLowerCase();
+      const filtered = freelancers.filter(freelancer => 
+        (freelancer.full_name?.toLowerCase() || '').includes(searchTerm) ||
+        (freelancer.email?.toLowerCase() || '').includes(searchTerm)
+      );
+      setFilteredFreelancers(filtered);
+    }
+  }, [freelancers, freelancerSearch]);
+
   const fetchFreelancers = async () => {
     setLoading(true);
     setError('');
     try {
       const data = await UserService.getAllFreelancers();
       setFreelancers(data || []);
+      setFilteredFreelancers(data || []);
     } catch (err: any) {
       setError('Erreur lors du chargement des freelances');
       console.error('Erreur fetchFreelancers:', err);
@@ -109,13 +127,25 @@ const FreelancersView: React.FC = () => {
     <div className="p-6">
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Freelances</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            {filteredFreelancers.length} freelance{filteredFreelancers.length !== 1 ? 's' : ''}
+            {freelancerSearch && ` (filtré${filteredFreelancers.length !== 1 ? 's' : ''} sur ${freelancers.length})`}
+          </h2>
           <p className="text-sm text-gray-600 mt-1">Gérez vos freelancers et invitez de nouveaux talents</p>
         </div>
         <Button className="w-full md:w-auto" onClick={() => setModalOpen(true)}>
           Inviter un freelance
         </Button>
       </div>
+
+      {/* Champ de recherche pour les freelancers */}
+      <SearchBox
+        value={freelancerSearch}
+        onChange={setFreelancerSearch}
+        placeholder="Rechercher par nom ou email..."
+        label="Rechercher un freelancer"
+        icon="👨‍💼"
+      />
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -146,14 +176,16 @@ const FreelancersView: React.FC = () => {
                   <span className="text-gray-500">Chargement...</span>
                 </TableCell>
               </TableRow>
-            ) : freelancers.length === 0 ? (
+            ) : filteredFreelancers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-8">
-                  <span className="text-gray-500">Aucun freelance trouvé</span>
+                  <span className="text-gray-500">
+                    {freelancerSearch ? 'Aucun freelance ne correspond à votre recherche' : 'Aucun freelance trouvé'}
+                  </span>
                 </TableCell>
               </TableRow>
             ) : (
-              freelancers.map((user) => {
+              filteredFreelancers.map((user) => {
                 const status = getStatusLabel(user);
                 return (
                   <TableRow key={user.id}>

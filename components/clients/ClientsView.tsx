@@ -5,12 +5,15 @@ import { supabase } from "../../lib/supabase";
 import { Tables } from "../../lib/database";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { SearchBox } from "../ui/search";
 import { Users, UserPlus, UserMinus } from "lucide-react";
 
 type Client = Tables<"clients">;
 
 const ClientsView: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [clientSearch, setClientSearch] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showFreelancerModal, setShowFreelancerModal] = useState(false);
@@ -28,10 +31,27 @@ const ClientsView: React.FC = () => {
     const fetchClients = async () => {
       const data = await ClientService.getAll();
       setClients(data);
+      setFilteredClients(data);
       setLoading(false);
     };
     fetchClients();
   }, []);
+
+  // Effet pour filtrer les clients selon la recherche
+  useEffect(() => {
+    if (!clientSearch.trim()) {
+      setFilteredClients(clients);
+    } else {
+      const searchTerm = clientSearch.toLowerCase();
+      const filtered = clients.filter(client => 
+        (client.name?.toLowerCase() || '').includes(searchTerm) ||
+        (client.email?.toLowerCase() || '').includes(searchTerm) ||
+        (client.phone?.toLowerCase() || '').includes(searchTerm) ||
+        (client.address?.toLowerCase() || '').includes(searchTerm)
+      );
+      setFilteredClients(filtered);
+    }
+  }, [clients, clientSearch]);
 
   const handleEdit = (client: Client) => {
     setEditClient(client);
@@ -136,7 +156,10 @@ const ClientsView: React.FC = () => {
             <Users className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-lg font-semibold">{clients.length} clients</p>
+            <p className="text-lg font-semibold">
+              {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
+              {clientSearch && ` (filtré${filteredClients.length !== 1 ? 's' : ''} sur ${clients.length})`}
+            </p>
             <p className="text-sm text-gray-600">Total des clients dans votre portefeuille</p>
           </div>
         </div>
@@ -144,6 +167,15 @@ const ClientsView: React.FC = () => {
           Ajouter un client
         </Button>
       </div>
+
+      {/* Champ de recherche pour les clients */}
+      <SearchBox
+        value={clientSearch}
+        onChange={setClientSearch}
+        placeholder="Rechercher par nom, email, téléphone ou adresse..."
+        label="Rechercher un client"
+        icon="👥"
+      />
 
       {loading ? (
         <div className="flex items-center justify-center h-32">
@@ -163,7 +195,7 @@ const ClientsView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {clients.map((c) => (
+                {filteredClients.map((c) => (
                   <tr key={c.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{c.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{c.email}</td>

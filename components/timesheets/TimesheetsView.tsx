@@ -3,6 +3,7 @@ import { Calendar, Clock, CheckCircle, AlertCircle, XCircle } from 'lucide-react
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../ui/Table';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { SearchBox } from '../ui/search';
 import { TimesheetService, TimesheetWithRelations } from '../../lib/services/timesheets';
 
 const statusLabel = (status: string) => {
@@ -23,6 +24,8 @@ const statusBadgeClasses = (status: string) => {
 
 const TimesheetsView: React.FC = () => {
   const [timesheets, setTimesheets] = useState<TimesheetWithRelations[]>([]);
+  const [filteredTimesheets, setFilteredTimesheets] = useState<TimesheetWithRelations[]>([]);
+  const [timesheetSearch, setTimesheetSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +34,22 @@ const TimesheetsView: React.FC = () => {
     loadTimesheets();
   }, []);
 
+  // Effet pour filtrer les feuilles de temps selon la recherche
+  useEffect(() => {
+    if (!timesheetSearch.trim()) {
+      setFilteredTimesheets(timesheets);
+    } else {
+      const searchTerm = timesheetSearch.toLowerCase();
+      const filtered = timesheets.filter(timesheet => 
+        (timesheet.contract?.user?.full_name?.toLowerCase() || '').includes(searchTerm) ||
+        (timesheet.month?.toLowerCase() || '').includes(searchTerm) ||
+        (timesheet.worked_days?.toString() || '').includes(searchTerm) ||
+        (statusLabel(timesheet.status)?.toLowerCase() || '').includes(searchTerm)
+      );
+      setFilteredTimesheets(filtered);
+    }
+  }, [timesheets, timesheetSearch]);
+
   const loadTimesheets = async () => {
     setLoading(true);
     setError(null);
@@ -38,6 +57,7 @@ const TimesheetsView: React.FC = () => {
       // Récupère les timesheets pour la company courante (TimesheetService.getAll récupère par company)
       const data = await TimesheetService.getAll();
       setTimesheets(data || []);
+      setFilteredTimesheets(data || []);
     } catch (err: any) {
       console.error('Erreur chargement feuilles de temps:', err);
       setError(err?.message || 'Erreur lors du chargement');
@@ -81,9 +101,21 @@ const TimesheetsView: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Feuilles de temps</h2>
+        <h2 className="text-xl font-bold text-gray-900">
+          {filteredTimesheets.length} feuille{filteredTimesheets.length !== 1 ? 's' : ''} de temps
+          {timesheetSearch && ` (filtré${filteredTimesheets.length !== 1 ? 's' : ''} sur ${timesheets.length})`}
+        </h2>
         <p className="text-sm text-gray-600 mt-1">Consultez et validez les feuilles de temps soumises</p>
       </div>
+
+      {/* Champ de recherche pour les feuilles de temps */}
+      <SearchBox
+        value={timesheetSearch}
+        onChange={setTimesheetSearch}
+        placeholder="Rechercher par consultant, mois, jours travaillés ou statut..."
+        label="Rechercher une feuille de temps"
+        icon="📅"
+      />
 
       <Card>
         <CardHeader>
@@ -116,14 +148,19 @@ const TimesheetsView: React.FC = () => {
                   </TableHeader>
 
                   <TableBody>
-                    {timesheets.length === 0 ? (
+                    {filteredTimesheets.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8">
-                          <p className="text-gray-500">Aucune feuille de temps trouvée</p>
+                          <p className="text-gray-500">
+                            {timesheetSearch 
+                              ? `Aucune feuille de temps trouvée pour "${timesheetSearch}"` 
+                              : 'Aucune feuille de temps trouvée'
+                            }
+                          </p>
                         </TableCell>
                       </TableRow>
                     ) : (
-                      timesheets.map((ts) => (
+                      filteredTimesheets.map((ts) => (
                         <TableRow key={ts.id}>
                           <TableCell className="font-medium">
                             {ts.contract?.user?.full_name || '—'}

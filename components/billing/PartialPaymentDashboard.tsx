@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { SearchBox } from '../ui/search';
 import { InvoiceWithFreelancerPayments, FreelancerPaymentSummary, FreelancerPartialPaymentService } from '../../lib/services/partial-payments';
 import PartialPaymentDialog from './PartialPaymentDialog';
 import { CreditCard, Eye } from 'lucide-react';
@@ -19,6 +20,8 @@ const translatePaymentMethod = (method: string): string => {
 // Composant complet pour afficher les factures (reprend l'ancienne page admin/invoices)
 const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [filteredInvoices, setFilteredInvoices] = useState<any[]>([]);
+  const [invoiceSearch, setInvoiceSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +32,23 @@ const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
     loadInvoices();
   }, [companyId]);
 
+  // Effet pour filtrer les factures selon la recherche
+  useEffect(() => {
+    if (!invoiceSearch.trim()) {
+      setFilteredInvoices(invoices);
+    } else {
+      const searchTerm = invoiceSearch.toLowerCase();
+      const filtered = invoices.filter(invoice => 
+        (invoice.number?.toLowerCase() || '').includes(searchTerm) ||
+        (invoice.client?.name?.toLowerCase() || '').includes(searchTerm) ||
+        (invoice.timesheet?.contract?.user?.full_name?.toLowerCase() || '').includes(searchTerm) ||
+        (invoice.timesheet?.month?.toLowerCase() || '').includes(searchTerm) ||
+        (invoice.facturation_ttc?.toString() || '').includes(searchTerm)
+      );
+      setFilteredInvoices(filtered);
+    }
+  }, [invoices, invoiceSearch]);
+
   const loadInvoices = async () => {
     setLoading(true);
     setError(null);
@@ -37,6 +57,7 @@ const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
       const { InvoiceService } = await import('../../lib/services/invoices');
       const data = await InvoiceService.getAll();
       setInvoices(data || []);
+      setFilteredInvoices(data || []);
     } catch (err: any) {
       console.error('Erreur chargement factures:', err);
       setError(err?.message || 'Erreur lors du chargement');
@@ -160,20 +181,29 @@ const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
     }
   };
 
-  // Calculs des statistiques
-  const totalAmount = invoices.reduce((sum, inv) => sum + (inv.facturation_ttc || 0), 0);
-  const paidByClientAmount = invoices
+  // Calculs des statistiques basés sur les factures filtrées
+  const totalAmount = filteredInvoices.reduce((sum, inv) => sum + (inv.facturation_ttc || 0), 0);
+  const paidByClientAmount = filteredInvoices
     .filter(inv => inv.status === 'paid' || inv.status === 'paid_freelancer')
     .reduce((sum, inv) => sum + (inv.facturation_ttc || 0), 0);
-  const freelancerPaidAmount = invoices
+  const freelancerPaidAmount = filteredInvoices
     .filter(inv => inv.status === 'paid_freelancer')
     .reduce((sum, inv) => sum + (inv.facturation_ttc || 0), 0);
-  const pendingAmount = invoices
+  const pendingAmount = filteredInvoices
     .filter(inv => inv.status === 'pending' || inv.status === 'sent')
     .reduce((sum, inv) => sum + (inv.facturation_ttc || 0), 0);
 
   return (
     <div className="space-y-8">
+      {/* Champ de recherche pour les factures */}
+      <SearchBox
+        value={invoiceSearch}
+        onChange={setInvoiceSearch}
+        placeholder="Rechercher par numéro, client, freelancer, période ou montant..."
+        label="Rechercher une facture"
+        icon="🧾"
+      />
+
       {/* Stats Cards - Reprend l'ancienne interface complète */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card>
@@ -181,9 +211,14 @@ const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
             <div className="flex items-center">
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-600">Total factures</p>
-                <p className="text-2xl font-bold text-gray-900">{invoices.length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {filteredInvoices.length}
+                  {invoiceSearch && ` / ${invoices.length}`}
+                </p>
+                {invoiceSearch && (
+                  <p className="text-xs text-blue-600 mt-1">Filtré pour: {invoiceSearch}</p>
+                )}
               </div>
-              <span className="text-2xl">📄</span>
             </div>
           </div>
         </Card>
@@ -194,8 +229,10 @@ const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-600">Montant total</p>
                 <p className="text-2xl font-bold text-gray-900">{totalAmount.toFixed(2)}€</p>
+                {invoiceSearch && (
+                  <p className="text-xs text-blue-600 mt-1">Pour ce filtre</p>
+                )}
               </div>
-              <span className="text-2xl">💰</span>
             </div>
           </div>
         </Card>
@@ -206,8 +243,10 @@ const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-600">Reçues clients</p>
                 <p className="text-2xl font-bold text-green-600">{paidByClientAmount.toFixed(2)}€</p>
+                {invoiceSearch && (
+                  <p className="text-xs text-blue-600 mt-1">Montant filtré</p>
+                )}
               </div>
-              <span className="text-2xl">✅</span>
             </div>
           </div>
         </Card>
@@ -218,8 +257,10 @@ const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-600">Versées freelancers</p>
                 <p className="text-2xl font-bold text-emerald-600">{freelancerPaidAmount.toFixed(2)}€</p>
+                {invoiceSearch && (
+                  <p className="text-xs text-blue-600 mt-1">Montant filtré</p>
+                )}
               </div>
-              <span className="text-2xl">💸</span>
             </div>
           </div>
         </Card>
@@ -230,8 +271,10 @@ const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-600">En attente</p>
                 <p className="text-2xl font-bold text-yellow-600">{pendingAmount.toFixed(2)}€</p>
+                {invoiceSearch && (
+                  <p className="text-xs text-blue-600 mt-1">Montant filtré</p>
+                )}
               </div>
-              <span className="text-2xl">⏳</span>
             </div>
           </div>
         </Card>
@@ -266,14 +309,19 @@ const InvoicesView: React.FC<{ companyId: string }> = ({ companyId }) => {
                   </thead>
 
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {invoices.length === 0 ? (
+                    {filteredInvoices.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-3 py-8 text-center">
-                          <p className="text-gray-500 text-sm">Aucune facture trouvée</p>
+                          <p className="text-gray-500 text-sm">
+                            {invoiceSearch 
+                              ? `Aucune facture trouvée pour "${invoiceSearch}"` 
+                              : 'Aucune facture trouvée'
+                            }
+                          </p>
                         </td>
                       </tr>
                     ) : (
-                      invoices.map((invoice) => (
+                      filteredInvoices.map((invoice) => (
                         <tr key={invoice.id}>
                           <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                             {invoice.number}
@@ -471,6 +519,7 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceWithFreelancerPayments | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'unpaid' | 'fully_paid' | 'advances' | 'sent'>('all');
+  const [freelancerSearch, setFreelancerSearch] = useState<string>('');
 
   useEffect(() => {
     loadData();
@@ -533,7 +582,17 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
     );
   };
 
-  const filteredInvoices = invoices.filter(invoice => {
+  // Première étape : filtrage par recherche de freelancer
+  const searchFilteredInvoices = invoices.filter(invoice => {
+    if (freelancerSearch) {
+      const searchTerm = freelancerSearch.toLowerCase();
+      return invoice.freelancer_name.toLowerCase().includes(searchTerm);
+    }
+    return true;
+  });
+
+  // Deuxième étape : filtrage par statut appliqué sur les résultats de recherche
+  const filteredInvoices = searchFilteredInvoices.filter(invoice => {
     if (filterStatus === 'all') return true;
     if (filterStatus === 'unpaid') return invoice.total_paid_to_freelancer === 0;
     if (filterStatus === 'fully_paid') return invoice.remaining_to_pay_freelancer === 0;
@@ -541,6 +600,24 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
     if (filterStatus === 'sent') return invoice.status === 'sent';
     return true;
   });
+
+  // Calculs dynamiques basés sur les factures filtrées par recherche (pour les boutons)
+  const searchFilteredSummary = {
+    total_invoices: searchFilteredInvoices.length,
+    sent_count: searchFilteredInvoices.filter(inv => inv.status === 'sent').length,
+    advances_count: searchFilteredInvoices.filter(inv => inv.has_advances).length,
+    unpaid_to_freelancer_count: searchFilteredInvoices.filter(inv => inv.total_paid_to_freelancer === 0).length,
+    fully_paid_to_freelancer_count: searchFilteredInvoices.filter(inv => inv.remaining_to_pay_freelancer === 0).length,
+  };
+
+  // Calculs dynamiques basés sur les factures complètement filtrées (pour l'affichage)
+  const filteredSummary = {
+    total_invoices: filteredInvoices.length,
+    total_invoice_amount: filteredInvoices.reduce((sum, inv) => sum + inv.total_amount, 0),
+    total_company_margin: filteredInvoices.reduce((sum, inv) => sum + inv.company_margin_taken, 0),
+    unpaid_to_freelancer_count: filteredInvoices.filter(inv => inv.total_paid_to_freelancer === 0).length,
+    fully_paid_to_freelancer_count: filteredInvoices.filter(inv => inv.remaining_to_pay_freelancer === 0).length,
+  };
 
   if (loading) {
     return (
@@ -591,39 +668,53 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
         <InvoicesView companyId={companyId} />
       ) : (
         <>
-          {/* Résumé des paiements */}
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Total factures</p>
-                <p className="text-2xl font-semibold">{summary.total_invoices}</p>
+          {/* Champ de recherche par freelancer */}
+          <SearchBox
+            value={freelancerSearch}
+            onChange={setFreelancerSearch}
+            placeholder="Tapez le nom du freelancer..."
+            label="Rechercher un freelancer"
+            icon="🔍"
+          />
+
+          {/* Résumé des paiements dynamique */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="p-4">
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600">Total factures</p>
+                  <p className="text-2xl font-semibold">{filteredSummary.total_invoices}</p>
+                  {freelancerSearch && (
+                    <p className="text-xs text-blue-600 mt-1">Filtré pour: {freelancerSearch}</p>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Montant factures</p>
-                <p className="text-2xl font-semibold">{summary.total_invoice_amount.toFixed(2)}€</p>
+            <Card className="p-4">
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600">Montant factures</p>
+                  <p className="text-2xl font-semibold">{filteredSummary.total_invoice_amount.toFixed(2)}€</p>
+                  {freelancerSearch && (
+                    <p className="text-xs text-blue-600 mt-1">Pour ce freelancer</p>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
 
-
-
-          <Card className="p-4">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Marge compagnie</p>
-                <p className="text-2xl font-semibold text-blue-600">{summary.total_company_margin.toFixed(2)}€</p>
+            <Card className="p-4">
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600">Marge compagnie</p>
+                  <p className="text-2xl font-semibold text-blue-600">{filteredSummary.total_company_margin.toFixed(2)}€</p>
+                  {freelancerSearch && (
+                    <p className="text-xs text-blue-600 mt-1">Générée par ce freelancer</p>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
-        </div>
-      )}
+            </Card>
+          </div>
 
       {/* Filtres améliorés avec gestion des avances */}
       <div className="flex flex-wrap gap-2">
@@ -632,7 +723,8 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
           variant={filterStatus === 'all' ? 'primary' : 'outline'}
           size="sm"
         >
-          Toutes ({invoices.length})
+          Toutes ({searchFilteredSummary.total_invoices})
+          {freelancerSearch && <span className="text-xs ml-1">filtré</span>}
         </Button>
         <Button
           onClick={() => setFilterStatus('sent')}
@@ -640,7 +732,8 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
           size="sm"
           className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
         >
-          🚀 Factures envoyées ({invoices.filter(inv => inv.status === 'sent').length})
+          🚀 Factures envoyées ({searchFilteredSummary.sent_count})
+          {freelancerSearch && <span className="text-xs ml-1">filtré</span>}
         </Button>
         <Button
           onClick={() => setFilterStatus('advances')}
@@ -648,21 +741,24 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
           size="sm"
           className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
         >
-          💰 Avec avances ({invoices.filter(inv => inv.has_advances).length})
+          💰 Avec avances ({searchFilteredSummary.advances_count})
+          {freelancerSearch && <span className="text-xs ml-1">filtré</span>}
         </Button>
         <Button
           onClick={() => setFilterStatus('unpaid')}
           variant={filterStatus === 'unpaid' ? 'primary' : 'outline'}
           size="sm"
         >
-          Non payées ({summary?.unpaid_to_freelancer_count || 0})
+          Non payées ({searchFilteredSummary.unpaid_to_freelancer_count})
+          {freelancerSearch && <span className="text-xs ml-1">filtré</span>}
         </Button>
         <Button
           onClick={() => setFilterStatus('fully_paid')}
           variant={filterStatus === 'fully_paid' ? 'primary' : 'outline'}
           size="sm"
         >
-          Payées ({summary?.fully_paid_to_freelancer_count || 0})
+          Payées ({searchFilteredSummary.fully_paid_to_freelancer_count})
+          {freelancerSearch && <span className="text-xs ml-1">filtré</span>}
         </Button>
       </div>
 
