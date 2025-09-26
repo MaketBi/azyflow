@@ -10,6 +10,8 @@ import AdminTimesheetsPage from '../pages/admin/timesheets';
 import AdminFreelancersPage from '../pages/admin/freelancers';
 import ClientsPage from '../pages/admin/clients';
 import { ContractsPage } from '../pages/admin/ContractsPage';
+import ClientsContractsPage from '../pages/admin/ClientsContractsPage';
+import FreelancersTimesheetsPage from '../pages/admin/FreelancersTimesheetsPage';
 import FreelancerProfile from '../pages/admin/FreelancerProfile';
 import AdminInvoicesPage from '../pages/admin/invoices';
 import FreelancerInvoicesPage from '../pages/freelancer/invoices';
@@ -76,8 +78,10 @@ function App() {
                 <Route path="/admin/dashboard" element={<DashboardPage />} />
                 <Route path="/admin/timesheets" element={<AdminTimesheetsPage />} />
                 <Route path="/admin/freelancers" element={<AdminFreelancersPage />} />
+                <Route path="/admin/freelancers-timesheets" element={<FreelancersTimesheetsPage />} />
                 <Route path="/admin/clients" element={<ClientsPage />} />
                 <Route path="/admin/contracts" element={<ContractsPage />} />
+                <Route path="/admin/clients-contracts" element={<ClientsContractsPage />} />
                 <Route path="/admin/invoices" element={<AdminInvoicesPage />} />
                 <Route path="/admin/billing" element={<BillingManagementPage />} />
                 <Route path="/admin/freelancers/:id" element={<FreelancerProfile />} />

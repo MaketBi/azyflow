@@ -20,10 +20,8 @@ export const Navbar: React.FC<NavbarProps> = ({ user, isAdmin }) => {
 
   const navigation = isAdmin ? [
   { name: 'Tableau de bord', href: '/admin/dashboard' },
-  { name: 'Freelances', href: '/admin/freelancers' },
-  { name: 'Clients', href: '/admin/clients' },
-  { name: 'Contrats', href: '/admin/contracts' },
-  { name: 'Feuilles de temps (CRA)', href: '/admin/timesheets' },
+  { name: 'Freelances & CRA', href: '/admin/freelancers-timesheets' },
+  { name: 'Clients & Contrats', href: '/admin/clients-contracts' },
   { name: 'Gestion des Paiements Freelancers', href: '/admin/billing' },
   ] : [
   { name: 'Feuilles de temps (CRA)', href: '/freelancer/timesheets' },
