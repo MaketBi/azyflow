@@ -231,6 +231,69 @@ export type Database = {
         }
         Relationships: []
       }
+      freelancer_payments: {
+        Row: {
+          advance_reason: string | null
+          amount: number
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          invoice_id: string
+          is_advance: boolean
+          notes: string | null
+          payment_date: string
+          payment_method: string
+          reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          advance_reason?: string | null
+          amount: number
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          invoice_id: string
+          is_advance?: boolean
+          notes?: string | null
+          payment_date?: string
+          payment_method: string
+          reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          advance_reason?: string | null
+          amount?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          invoice_id?: string
+          is_advance?: boolean
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          reference?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freelancer_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freelancer_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
