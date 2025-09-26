@@ -8,7 +8,8 @@ import {
   Shield, 
   Calendar,
   Settings,
-  Key
+  Key,
+  Phone
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -16,6 +17,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
 import { NotificationModal } from '../components/profile/NotificationModal';
+import { UpdatePhoneModal } from '../components/profile/UpdatePhoneModal';
 import { AuthService } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 
@@ -23,6 +25,7 @@ interface UserProfile {
   id: string;
   email: string;
   full_name: string;
+  phone?: string;
   role: string;
   company_id?: string;
   created_at: string;
@@ -44,6 +47,7 @@ export const ProfilePage: React.FC = () => {
   // États pour les modals
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -255,6 +259,13 @@ export const ProfilePage: React.FC = () => {
                   <p className="text-gray-900">{profile.full_name}</p>
                 </div>
               </div>
+              <div className="flex items-center space-x-3">
+                <Phone className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Téléphone</p>
+                  <p className="text-gray-900">{profile.phone || 'Non renseigné'}</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -321,40 +332,58 @@ export const ProfilePage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Sécurité */}
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 rounded-lg flex flex-col h-full">
                   <div className="flex items-center space-x-2 mb-3">
                     <Key className="w-5 h-5 text-red-600" />
                     <h3 className="font-medium text-gray-900">Sécurité</h3>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">
+                  <p className="text-sm text-gray-600 mb-3 flex-1">
                     Gérez la sécurité de votre compte
                   </p>
                   <Button
                     onClick={() => setShowPasswordModal(true)}
-                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 w-full"
+                    className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 w-full h-10"
                   >
                     <Key className="h-4 w-4" />
-                    Changer le mot de passe
+                    <span className="text-sm">Nouveau mot de passe</span>
+                  </Button>
+                </div>
+
+                {/* Téléphone */}
+                <div className="p-4 border border-gray-200 rounded-lg flex flex-col h-full">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Phone className="w-5 h-5 text-blue-600" />
+                    <h3 className="font-medium text-gray-900">Téléphone</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3 flex-1">
+                    Mettez à jour votre numéro de téléphone
+                  </p>
+                  <Button
+                    onClick={() => setShowPhoneModal(true)}
+                    className="flex items-center justify-center gap-2 w-full h-10"
+                  >
+                    <Phone className="h-4 w-4" />
+                    <span className="text-sm">Modifier le téléphone</span>
                   </Button>
                 </div>
 
                 {/* Notifications */}
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 rounded-lg flex flex-col h-full">
                   <div className="flex items-center space-x-2 mb-3">
                     <Bell className="w-5 h-5 text-orange-600" />
                     <h3 className="font-medium text-gray-900">Notifications</h3>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">
+                  <p className="text-sm text-gray-600 mb-3 flex-1">
                     Configurez vos préférences de notifications
                   </p>
                   <Button
                     onClick={() => setShowNotificationModal(true)}
-                    className="flex items-center gap-2 w-full"
+                    className="flex items-center justify-center gap-2 w-full h-10"
                   >
                     <Bell className="h-4 w-4" />
-                    Gérer les notifications
+                    <span className="text-sm">Gérer les notifications</span>
                   </Button>
                 </div>
               </div>
@@ -369,6 +398,22 @@ export const ProfilePage: React.FC = () => {
           onSuccess={(message) => {
             setSuccess(message);
             setTimeout(() => setSuccess(null), 3000);
+          }}
+          onError={(message) => {
+            setError(message);
+            setTimeout(() => setError(null), 3000);
+          }}
+        />
+
+        <UpdatePhoneModal
+          isOpen={showPhoneModal}
+          onClose={() => setShowPhoneModal(false)}
+          currentPhone={profile.phone}
+          onSuccess={(message) => {
+            setSuccess(message);
+            setTimeout(() => setSuccess(null), 3000);
+            // Recharger le profil pour afficher le nouveau numéro
+            loadProfile();
           }}
           onError={(message) => {
             setError(message);

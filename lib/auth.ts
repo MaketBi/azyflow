@@ -73,29 +73,41 @@ export class AuthService {
   }
 
   /**
-   * Get current user profile from auth metadata (bypass public.users)
+   * Get current user profile from the users table (includes phone number)
    */
   static async getCurrentUserProfile(): Promise<any | null> {
     const user = await this.getCurrentUser();
     if (!user) return null;
 
-    // Utiliser les métadonnées au lieu de la table public.users
-    const metadata = user.user_metadata;
-    
-    if (!metadata.full_name || !metadata.role) {
-      // Pas de métadonnées complètes
+    try {
+      // Récupérer le profil complet depuis la table users
+      const { data: userProfile, error } = await supabase
+        .from('users')
+        .select('id, email, full_name, phone, role, company_id, created_at, active, last_login')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !userProfile) {
+        console.error('Error fetching user profile:', error);
+        
+        // Fallback sur les métadonnées si la table users ne contient pas l'utilisateur
+        const metadata = user.user_metadata;
+        return {
+          id: user.id,
+          email: user.email,
+          full_name: metadata.full_name,
+          role: metadata.role,
+          company_name: metadata.company_name,
+          created_at: user.created_at,
+          phone: null,
+        };
+      }
+
+      return userProfile;
+    } catch (error) {
+      console.error('Error in getCurrentUserProfile:', error);
       return null;
     }
-
-    // Retourner un profil virtuel basé sur les métadonnées
-    return {
-      id: user.id,
-      email: user.email,
-      full_name: metadata.full_name,
-      role: metadata.role,
-      company_name: metadata.company_name,
-      created_at: user.created_at,
-    };
   }
 
   /**

@@ -44,7 +44,7 @@ serve(async (req)=>{
       }
     });
   }
-  const { email, fullName } = body;
+  const { email, fullName, phone } = body;
   if (!email || !fullName) {
     return new Response(JSON.stringify({
       error: "Missing email or fullName"
@@ -55,6 +55,52 @@ serve(async (req)=>{
         "Access-Control-Allow-Origin": "*"
       }
     });
+  }
+  
+  // Fonction de normalisation du numéro de téléphone
+  const normalizePhoneNumber = (phone: string): string => {
+    if (!phone || !phone.trim()) return "";
+    
+    const cleanPhone = phone.replace(/[\s\.\-]/g, '');
+    
+    // Si ça commence par 0 et fait 10 chiffres = numéro français
+    if (/^0[1-9]\d{8}$/.test(cleanPhone)) {
+      return '+33' + cleanPhone.substring(1);
+    }
+    
+    // Si ça commence déjà par + = format international
+    if (cleanPhone.startsWith('+')) {
+      return cleanPhone;
+    }
+    
+    // Si c'est 9 chiffres commençant par 1-9 = numéro français sans le 0
+    if (/^[1-9]\d{8}$/.test(cleanPhone)) {
+      return '+33' + cleanPhone;
+    }
+    
+    return cleanPhone;
+  };
+
+  // Validation et normalisation du numéro de téléphone si fourni
+  let normalizedPhone = "";
+  if (phone && phone.trim()) {
+    normalizedPhone = normalizePhoneNumber(phone);
+    
+    // Validation du format normalisé
+    const phoneRegex = /^\+\d{1,3}\d{6,14}$/;
+    const frenchPhoneRegex = /^\+33[1-9]\d{8}$/;
+    
+    if (!phoneRegex.test(normalizedPhone) && !frenchPhoneRegex.test(normalizedPhone)) {
+      return new Response(JSON.stringify({
+        error: "Invalid phone number format"
+      }), {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    }
   }
   // --- Auth: extract JWT ---
   const authHeader = req.headers.get("authorization") || "";
@@ -116,6 +162,7 @@ serve(async (req)=>{
   const metadata = {
     role: "freelancer",
     full_name: fullName,
+    phone: normalizedPhone || null, // Utilise le numéro normalisé
     company_id: String(companyId),
     company_name: companyName,
     active: false

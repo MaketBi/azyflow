@@ -26,6 +26,7 @@ const FreelancersView: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
+  const [invitePhone, setInvitePhone] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -78,11 +79,61 @@ const FreelancersView: React.FC = () => {
     }
   };
 
+  // Fonction de normalisation du numéro de téléphone
+  const normalizePhoneNumber = (phone: string): string => {
+    if (!phone.trim()) return '';
+    
+    const cleanPhone = phone.replace(/[\s\.\-]/g, '');
+    
+    // Si ça commence par 0 et fait 10 chiffres = numéro français
+    if (/^0[1-9]\d{8}$/.test(cleanPhone)) {
+      return '+33' + cleanPhone.substring(1); // Remplace le 0 par +33
+    }
+    
+    // Si ça commence déjà par + = format international
+    if (cleanPhone.startsWith('+')) {
+      return cleanPhone;
+    }
+    
+    // Si c'est 9 chiffres commençant par 1-9 = numéro français sans le 0
+    if (/^[1-9]\d{8}$/.test(cleanPhone)) {
+      return '+33' + cleanPhone;
+    }
+    
+    return cleanPhone; // Retourne tel quel pour autres formats internationaux
+  };
+
+  // Fonction de validation du numéro de téléphone
+  const validatePhoneNumber = (phone: string): boolean => {
+    if (!phone.trim()) return true; // Le téléphone est optionnel
+    
+    const normalizedPhone = normalizePhoneNumber(phone);
+    
+    // Validation des formats internationaux normalisés
+    const phoneRegex = /^\+\d{1,3}\d{6,14}$/;
+    
+    // Validation spécifique pour les numéros français
+    const frenchPhoneRegex = /^\+33[1-9]\d{8}$/;
+    
+    return phoneRegex.test(normalizedPhone) || frenchPhoneRegex.test(normalizedPhone);
+  };
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setInviteLoading(true);
     setError('');
     setSuccess('');
+    
+    // Validation du numéro de téléphone
+    if (invitePhone && !validatePhoneNumber(invitePhone)) {
+      setError('Le numéro de téléphone n\'est pas valide. Utilisez un format comme +33 1 23 45 67 89 ou 01 23 45 67 89');
+      setInviteLoading(false);
+      return;
+    }
+    
+    // Normalisation du numéro de téléphone
+    const normalizedPhone = normalizePhoneNumber(invitePhone);
+    
     try {
       // Récupère le token d'accès de l'utilisateur connecté via supabase
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -103,6 +154,7 @@ const FreelancersView: React.FC = () => {
           body: JSON.stringify({
             email: inviteEmail,
             fullName: inviteName,
+            phone: normalizedPhone, // Utilise le numéro normalisé
           }),
         }
       );
@@ -113,6 +165,7 @@ const FreelancersView: React.FC = () => {
         setSuccess('Invitation envoyée avec succès !');
         setInviteEmail('');
         setInviteName('');
+        setInvitePhone('');
         setModalOpen(false);
         await fetchFreelancers();
       }
@@ -276,6 +329,33 @@ const FreelancersView: React.FC = () => {
                   required
                   placeholder="ex: Jean Dupont"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Numéro de téléphone
+                  <span className="text-gray-500 text-sm font-normal"> (optionnel)</span>
+                </label>
+                <input
+                  type="tel"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 ${
+                    invitePhone && !validatePhoneNumber(invitePhone)
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
+                  value={invitePhone}
+                  onChange={(e) => setInvitePhone(e.target.value)}
+                  placeholder="ex: +33 1 23 45 67 89 ou 01 23 45 67 89"
+                />
+                {invitePhone && !validatePhoneNumber(invitePhone) && (
+                  <p className="mt-1 text-sm text-red-600">
+                    Format invalide. Utilisez +33 1 23 45 67 89 ou 01 23 45 67 89
+                  </p>
+                )}
+                {invitePhone && validatePhoneNumber(invitePhone) && invitePhone !== normalizePhoneNumber(invitePhone) && (
+                  <p className="mt-1 text-sm text-blue-600">
+                    📱 Sera automatiquement converti en : {normalizePhoneNumber(invitePhone)}
+                  </p>
+                )}
               </div>
               <div className="flex justify-end space-x-2 mt-6">
                 <Button
