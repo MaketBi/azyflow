@@ -58,46 +58,77 @@ const PartialPaymentDialog: React.FC<FreelancerPaymentDialogProps> = ({
   const maxAmount = invoice.remaining_to_pay_freelancer;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             💰 Payer le freelancer
           </h2>
           
           {/* Info facture */}
-          <div className="bg-blue-50 p-3 rounded-lg mb-4 text-sm">
+          <div className="bg-blue-50 p-3 rounded-lg mb-3 text-sm space-y-1">
             <p><strong>Freelancer:</strong> {invoice.freelancer_name} - {invoice.month}</p>
             <p><strong>Montant facture:</strong> {invoice.total_amount.toFixed(2)}€</p>
-            <p><strong>Déjà versé au freelancer:</strong> {invoice.total_paid_to_freelancer.toFixed(2)}€</p>
+            <p><strong>Déjà versé:</strong> {invoice.total_paid_to_freelancer.toFixed(2)}€</p>
             <p><strong>Restant à verser:</strong> {invoice.remaining_to_pay_freelancer.toFixed(2)}€</p>
             <p className={invoice.client_has_paid ? 'text-green-600' : 'text-red-600'}>
               <strong>Client a payé:</strong> {invoice.client_has_paid ? 'Oui ✅' : 'Non ❌'}
             </p>
             {invoice.has_advances && (
               <p className="text-orange-600 font-medium">
-                <strong>⚠️ Avances déjà faites:</strong> {invoice.total_advances.toFixed(2)}€
+                <strong>⚠️ Avances:</strong> {invoice.total_advances.toFixed(2)}€
               </p>
             )}
           </div>
 
           {/* Alerte avance */}
           {!invoice.client_has_paid && (
-            <div className="bg-orange-50 border-l-4 border-orange-400 p-3 mb-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <p className="text-sm text-orange-800">
-                    🚀 <strong>Attention:</strong> Le client n'a pas encore payé cette facture. 
-                    Ce versement sera considéré comme une <strong>avance</strong> et sera tracé comme tel.
-                  </p>
-                </div>
-              </div>
+            <div className="bg-orange-50 border-l-4 border-orange-400 p-2 mb-3">
+              <p className="text-sm text-orange-800">
+                🚀 <strong>Attention:</strong> Le client n'a pas encore payé cette facture. 
+                Ce versement sera considéré comme une <strong>avance</strong>.
+              </p>
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
+            {/* Options de paiement rapides */}
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Type de paiement
+              </label>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAmount(maxAmount.toString());
+                    setIsAdvance(!invoice.client_has_paid);
+                    if (!invoice.client_has_paid) {
+                      setAdvanceReason('Paiement intégral en avance');
+                    }
+                  }}
+                  className="flex items-center justify-center px-3 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  💰 Intégral ({maxAmount.toFixed(2)}€)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAmount('');
+                    setIsAdvance(!invoice.client_has_paid);
+                    if (!invoice.client_has_paid) {
+                      setAdvanceReason('Avance partielle');
+                    }
+                  }}
+                  className="flex items-center justify-center px-3 py-2 border border-orange-300 rounded-md text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  🚀 Partiel/Avance
+                </button>
+              </div>
+            </div>
+
             {/* Montant */}
-            <div className="mb-4">
+            <div className="mb-3">
               <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
                 Montant à verser au freelancer (€)
               </label>
@@ -116,7 +147,7 @@ const PartialPaymentDialog: React.FC<FreelancerPaymentDialogProps> = ({
             </div>
 
             {/* Méthode de paiement */}
-            <div className="mb-4">
+            <div className="mb-3">
               <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700 mb-1">
                 Méthode de paiement
               </label>
@@ -134,7 +165,7 @@ const PartialPaymentDialog: React.FC<FreelancerPaymentDialogProps> = ({
             </div>
 
             {/* Référence */}
-            <div className="mb-4">
+            <div className="mb-3">
               <label htmlFor="reference" className="block text-sm font-medium text-gray-700 mb-1">
                 Référence (optionnel)
               </label>
@@ -149,7 +180,7 @@ const PartialPaymentDialog: React.FC<FreelancerPaymentDialogProps> = ({
             </div>
 
             {/* Notes */}
-            <div className="mb-4">
+            <div className="mb-3">
               <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
                 Notes (optionnel)
               </label>
@@ -157,7 +188,7 @@ const PartialPaymentDialog: React.FC<FreelancerPaymentDialogProps> = ({
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={3}
+                rows={2}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Commentaires supplémentaires..."
               />
@@ -165,8 +196,8 @@ const PartialPaymentDialog: React.FC<FreelancerPaymentDialogProps> = ({
 
             {/* Gestion des avances - uniquement si le client n'a pas payé */}
             {!invoice.client_has_paid && (
-              <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                <div className="flex items-center mb-3">
+              <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center mb-2">
                   <input
                     type="checkbox"
                     id="isAdvance"
@@ -176,7 +207,7 @@ const PartialPaymentDialog: React.FC<FreelancerPaymentDialogProps> = ({
                     className="mr-2"
                   />
                   <label htmlFor="isAdvance" className="text-sm font-medium text-orange-800">
-                    🚀 Marquer comme avance (client pas encore payé)
+                    🚀 Marquer comme avance
                   </label>
                 </div>
                 
@@ -194,7 +225,7 @@ const PartialPaymentDialog: React.FC<FreelancerPaymentDialogProps> = ({
                       placeholder="Ex: Urgence financière, avance sur délai client..."
                     />
                     <p className="text-xs text-orange-600 mt-1">
-                      ⚠️ Cette avance sera clairement tracée pour le freelancer et l'administration
+                      ⚠️ Tracée pour audit
                     </p>
                   </div>
                 )}

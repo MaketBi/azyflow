@@ -4,6 +4,19 @@ import { Button } from '../ui/Button';
 import { InvoiceWithFreelancerPayments, FreelancerPaymentSummary, FreelancerPartialPaymentService } from '../../lib/services/partial-payments';
 import PartialPaymentDialog from './PartialPaymentDialog';
 
+// Fonction de traduction des méthodes de paiement
+const translatePaymentMethod = (method: string): string => {
+  const translations: Record<string, string> = {
+    'bank_transfer': 'Virement bancaire',
+    'check': 'Chèque',
+    'cash': 'Espèces',
+    'other': 'Autre'
+  };
+  return translations[method] || method;
+};
+
+
+
 interface FreelancerPaymentDashboardProps {
   companyId: string;
 }
@@ -39,13 +52,6 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
 
   const handlePaymentAdded = () => {
     loadData(); // Rechargement des données
-  };
-
-  const handleMarkAsFullyPaid = async (invoiceId: string) => {
-    const success = await FreelancerPartialPaymentService.markInvoiceAsFullyPaidToFreelancer(invoiceId);
-    if (success) {
-      loadData();
-    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -89,7 +95,7 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
     if (filterStatus === 'unpaid') return invoice.total_paid_to_freelancer === 0;
     if (filterStatus === 'fully_paid') return invoice.remaining_to_pay_freelancer === 0;
     if (filterStatus === 'advances') return invoice.has_advances;
-    if (filterStatus === 'sent') return invoice.status === 'sent' || invoice.can_receive_advance;
+    if (filterStatus === 'sent') return invoice.status === 'sent';
     return true;
   });
 
@@ -124,23 +130,7 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
             </div>
           </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Versé aux freelancers</p>
-                <p className="text-2xl font-semibold text-green-600">{summary.total_paid_to_freelancers.toFixed(2)}€</p>
-              </div>
-            </div>
-          </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Restant à verser</p>
-                <p className="text-2xl font-semibold text-red-600">{summary.total_remaining_to_pay.toFixed(2)}€</p>
-              </div>
-            </div>
-          </Card>
 
           <Card className="p-4">
             <div className="flex items-center">
@@ -168,7 +158,7 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
           size="sm"
           className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
         >
-          🚀 Factures envoyées ({invoices.filter(inv => inv.status === 'sent' || inv.can_receive_advance).length})
+          🚀 Factures envoyées ({invoices.filter(inv => inv.status === 'sent').length})
         </Button>
         <Button
           onClick={() => setFilterStatus('advances')}
@@ -200,56 +190,67 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
           <Card key={invoice.id} className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="font-medium text-gray-900">
-                    {invoice.freelancer_name} - {invoice.month}
-                  </h3>
-                  {getStatusBadge(invoice.status)}
-                  {getAdvanceBadge(invoice)}
-                  {invoice.can_receive_advance && !invoice.client_has_paid && (
-                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                      🚀 Éligible avance
-                    </span>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                  <div>
-                    <p className="font-medium">Client: {invoice.client_name}</p>
-                    <p>Montant facture: {invoice.total_amount.toFixed(2)}€</p>
-                    <p className={invoice.client_has_paid ? 'text-green-600' : 'text-red-600'}>
-                      Client: {invoice.client_has_paid ? 'Payé ✅' : 'Non payé ❌'}
+                {/* En-tête avec informations principales et bouton d'action */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-gray-900">{invoice.freelancer_name} {invoice.total_amount.toFixed(2)}€</h3>
+                      {getStatusBadge(invoice.status)}
+                      {getAdvanceBadge(invoice)}
+                      {invoice.can_receive_advance && !invoice.client_has_paid && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                          🚀 Éligible avance
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mb-1">Client: {invoice.client_name}</p>
+                    <p className={`text-sm font-medium ${invoice.client_has_paid ? 'text-green-600' : 'text-red-600'}`}>
+                      {invoice.client_has_paid ? '✅ Client payé' : '❌ Client non payé'}
                     </p>
                   </div>
-                  <div>
-                    <p>Versé au freelancer: {invoice.total_paid_to_freelancer.toFixed(2)}€</p>
-                    {invoice.has_advances && (
-                      <p className="text-orange-600">
-                        Dont avances: {invoice.total_advances.toFixed(2)}€ 🚀
-                      </p>
+                  
+                  <div className="flex items-center gap-3">
+                    {invoice.remaining_to_pay_freelancer > 0 && (
+                      <Button
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setShowPaymentDialog(true);
+                        }}
+                        size="sm"
+                        variant="primary"
+                        className={invoice.can_receive_advance && !invoice.client_has_paid ? 'bg-orange-600 hover:bg-orange-700 border-orange-600' : 'bg-blue-600 hover:bg-blue-700'}
+                      >
+                        💰 Payer
+                      </Button>
                     )}
-                    <p>Restant à verser: {invoice.remaining_to_pay_freelancer.toFixed(2)}€</p>
-                  </div>
-                  <div>
-                    <p>Progression paiement: {invoice.freelancer_payment_progress}%</p>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${invoice.has_advances ? 'bg-orange-500' : 'bg-green-600'}`}
-                        style={{ width: `${invoice.freelancer_payment_progress}%` }}
-                      ></div>
-                    </div>
-                    {invoice.has_advances && (
-                      <p className="text-xs text-orange-600 mt-1">⚠️ Contient des avances</p>
-                    )}
-                  </div>
-                  <div>
-                    <p>Versements: {invoice.freelancer_payments.length}</p>
-                    <p>Marge: {invoice.company_margin_taken.toFixed(2)}€</p>
-                    <p>Émise: {new Date(invoice.issue_date).toLocaleDateString('fr-FR')}</p>
-                    {invoice.can_receive_advance && !invoice.client_has_paid && (
-                      <p className="text-xs text-blue-600 mt-1">💡 Avance possible</p>
+                    
+                    {invoice.remaining_to_pay_freelancer === 0 && (
+                      <div className="text-sm text-green-600 font-medium px-3 py-1 bg-green-50 rounded-full">
+                        ✅ Payé
+                      </div>
                     )}
                   </div>
+                </div>
+
+                {/* Informations complémentaires compactes */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                  <span className="flex items-center gap-1">
+                    📊 {invoice.freelancer_payments.length} versement{invoice.freelancer_payments.length > 1 ? 's' : ''}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    💰 Marge: {invoice.company_margin_taken.toFixed(2)}€
+                  </span>
+                  <span className="flex items-center gap-1">
+                    📅 {new Date(invoice.issue_date).toLocaleDateString('fr-FR')}
+                  </span>
+                  {invoice.has_advances && (
+                    <span className="flex items-center gap-1 text-orange-600 font-medium">
+                      🚀 Avances: {invoice.total_advances.toFixed(2)}€
+                    </span>
+                  )}
+                  {invoice.can_receive_advance && !invoice.client_has_paid && (
+                    <span className="text-blue-600 font-medium">💡 Avance possible</span>
+                  )}
                 </div>
 
                 {/* Liste des paiements aux freelancers avec traçage des avances */}
@@ -263,7 +264,7 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">
-                                  {payment.amount.toFixed(2)}€ - {payment.payment_method}
+                                  {payment.amount.toFixed(2)}€ - {translatePaymentMethod(payment.payment_method)}
                                 </span>
                                 {payment.is_advance && (
                                   <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
@@ -294,37 +295,7 @@ const PartialPaymentDashboard: React.FC<FreelancerPaymentDashboardProps> = ({ co
                 )}
               </div>
 
-              <div className="flex flex-col space-y-2 ml-4">
-                {invoice.remaining_to_pay_freelancer > 0 && (
-                  <>
-                    <Button
-                      onClick={() => {
-                        setSelectedInvoice(invoice);
-                        setShowPaymentDialog(true);
-                      }}
-                      size="sm"
-                      variant="primary"
-                      className={invoice.can_receive_advance && !invoice.client_has_paid ? 'bg-orange-600 hover:bg-orange-700 border-orange-600' : ''}
-                    >
-                      {invoice.can_receive_advance && !invoice.client_has_paid ? '🚀 Avancer freelancer' : '💰 Payer freelancer'}
-                    </Button>
-                    
-                    <Button
-                      onClick={() => handleMarkAsFullyPaid(invoice.id)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Payer intégralement
-                    </Button>
-                  </>
-                )}
-                
-                {invoice.remaining_to_pay_freelancer === 0 && (
-                  <div className="text-sm text-green-600 font-medium">
-                    ✅ Freelancer payé
-                  </div>
-                )}
-              </div>
+
             </div>
           </Card>
         ))}

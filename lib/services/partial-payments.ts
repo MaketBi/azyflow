@@ -247,77 +247,19 @@ export class FreelancerPartialPaymentService {
         let hasAdvances = false;
 
         if (realPayments.length > 0) {
-          // 🔥 UTILISER LES DONNÉES RÉELLES
+          // 🔥 UTILISER LES DONNÉES RÉELLES UNIQUEMENT
           freelancerPayments = realPayments;
           totalPaidToFreelancer = realPayments.reduce((sum, p) => sum + p.amount, 0);
           totalAdvances = realPayments.filter(p => p.is_advance).reduce((sum, p) => sum + p.amount, 0);
           hasAdvances = realPayments.some(p => p.is_advance);
           console.log(`📊 Facture ${invoice.id}: ${realPayments.length} paiements réels (${totalPaidToFreelancer}€, avances: ${totalAdvances}€)`);
         } else {
-          // 📋 FALLBACK: Simulation pour les anciennes données (compatibilité)
+          // � PAS DE PAIEMENTS = PAS D'AFFICHAGE (plus de simulation)
           freelancerPayments = [];
-          
-          // Calculer si la facture peut recevoir des avances (envoyée au client)
-          const canReceiveAdvance = ['sent', 'pending', 'partially_paid', 'paid', 'paid_freelancer', 'overdue'].includes(invoice.status);
-          
-          // Déterminer si le client a payé
-          const clientHasPaid = ['paid', 'paid_freelancer'].includes(invoice.status);
-
-          // Simuler les paiements selon le statut (pour compatibilité)
-          if (invoice.status === 'paid_freelancer') {
-            totalPaidToFreelancer = invoice.amount;
-            freelancerPayments.push({
-              id: 'simulated-freelancer-1',
-              amount: invoice.amount,
-              payment_method: 'bank_transfer',
-              reference: 'Paiement complet freelancer',
-              notes: 'Paiement intégral au freelancer (simulé)',
-              payment_date: invoice.issue_date,
-              created_at: new Date().toISOString(),
-              created_by: 'system',
-              is_advance: false,
-              advance_reason: undefined
-            });
-          } else if (invoice.status === 'partially_paid') {
-            totalPaidToFreelancer = invoice.amount * 0.6;
-            const isAdvancePayment = !clientHasPaid;
-          
-            if (isAdvancePayment) {
-              totalAdvances = totalPaidToFreelancer;
-              hasAdvances = true;
-            }
-
-            freelancerPayments.push({
-              id: 'simulated-freelancer-2',
-              amount: totalPaidToFreelancer,
-              payment_method: 'bank_transfer',
-              reference: isAdvancePayment ? 'Avance freelancer 60%' : 'Acompte freelancer 60%',
-              notes: isAdvancePayment ? 'Avance au freelancer (60% - client pas encore payé)' : 'Paiement partiel au freelancer (60%)',
-              payment_date: invoice.issue_date,
-              created_at: new Date().toISOString(),
-              created_by: 'system',
-              is_advance: isAdvancePayment,
-              advance_reason: isAdvancePayment ? 'Avance sur facture en attente de paiement client' : undefined
-            });
-          } else if (invoice.status === 'sent' && Math.random() > 0.7) {
-            // Simuler quelques avances sur factures juste envoyées (30% de chance)
-            totalPaidToFreelancer = invoice.amount * 0.4;
-            totalAdvances = totalPaidToFreelancer;
-            hasAdvances = true;
-
-            freelancerPayments.push({
-              id: 'simulated-advance-1',
-              amount: totalPaidToFreelancer,
-              payment_method: 'bank_transfer',
-              reference: 'Avance 40% - facture envoyée',
-              notes: 'Avance au freelancer sur facture envoyée au client',
-              payment_date: invoice.issue_date,
-              created_at: new Date().toISOString(),
-              created_by: 'system',
-              is_advance: true,
-              advance_reason: 'Avance exceptionnelle - facture envoyée au client'
-            });
-          }
+          totalPaidToFreelancer = 0;
+          totalAdvances = 0;
+          hasAdvances = false;
+          console.log(`📭 Facture ${invoice.id}: Aucun paiement (table vide)`);
         }
 
         // Calculer si la facture peut recevoir des avances (envoyée au client)
