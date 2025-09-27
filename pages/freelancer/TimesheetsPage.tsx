@@ -8,6 +8,9 @@ import { TimesheetService, TimesheetWithRelations } from '../../lib/services/tim
 import { WorkflowProgressBar } from '../../components/workflow/WorkflowProgressBar';
 import { WorkflowProgressBadge } from '../../components/workflow/WorkflowProgressBadge';
 import { determineWorkflowStatus } from '../../lib/workflow-progress';
+import { validateWorkedDays, getMonthWorkingDaysInfo } from '../../lib/utils/working-days';
+import { HNOManager } from '../../components/hno/HNOManager';
+import { HNOEntry } from '../../lib/types/hno';
 
 interface Client {
   id: string;
@@ -29,6 +32,42 @@ export const TimesheetsPage: React.FC = () => {
     year: new Date().getFullYear(),
     worked_days: 0,
   });
+  const [hnoEntries, setHnoEntries] = useState<HNOEntry[]>([]);
+
+  // Liste des mois pour le sélecteur
+  const months = [
+    { value: '01', label: 'Janvier' },
+    { value: '02', label: 'Février' },
+    { value: '03', label: 'Mars' },
+    { value: '04', label: 'Avril' },
+    { value: '05', label: 'Mai' },
+    { value: '06', label: 'Juin' },
+    { value: '07', label: 'Juillet' },
+    { value: '08', label: 'Août' },
+    { value: '09', label: 'Septembre' },
+    { value: '10', label: 'Octobre' },
+    { value: '11', label: 'Novembre' },
+    { value: '12', label: 'Décembre' },
+  ];
+
+  // Calculer les informations sur les jours ouvrés pour le mois/année sélectionnés
+  const getWorkingDaysInfo = () => {
+    if (!formData.month || !formData.year) return null;
+    return getMonthWorkingDaysInfo(formData.year, parseInt(formData.month));
+  };
+
+  const workingDaysInfo = getWorkingDaysInfo();
+  const maxWorkingDays = workingDaysInfo?.workingDays || 0;
+
+  // Obtenir le TJM du client sélectionné ou du timesheet en cours d'édition
+  const getCurrentTJM = (): number => {
+    if (editingTimesheet?.contract?.tjm) {
+      return editingTimesheet.contract.tjm;
+    }
+    // Pour un nouveau CRA, on peut essayer de trouver le TJM via les timesheets existants du même client
+    const existingTimesheet = timesheets.find(t => t.contract?.client_id === formData.client_id);
+    return existingTimesheet?.contract?.tjm || 500; // Valeur par défaut
+  };
 
   useEffect(() => {
     loadData();
@@ -69,13 +108,23 @@ export const TimesheetsPage: React.FC = () => {
       setError('Le nombre de jours travaillés doit être supérieur à 0');
       return;
     }
+
+    // Validation stricte des jours ouvrés - bloquer si dépassement
+    const validation = validateWorkedDays(formData.worked_days, formData.year, parseInt(formData.month));
+    if (!validation.isValid || validation.requiresComment) {
+      setError(validation.message || `Vous ne pouvez pas saisir plus de ${maxWorkingDays} jours ouvrés pour ce mois.`);
+      return;
+    }
     
     setSubmitting(true);
     
     try {
+      // Créer le format YYYY-MM pour la base de données
+      const monthFormatted = `${formData.year}-${formData.month.padStart(2, '0')}`;
+      
       const result = await TimesheetService.createDraft({
         client_id: formData.client_id,
-        month: formData.month,
+        month: monthFormatted,
         year: formData.year,
         worked_days: formData.worked_days,
       });
@@ -83,6 +132,7 @@ export const TimesheetsPage: React.FC = () => {
       if (result) {
         setShowForm(false);
         setFormData({ client_id: '', month: '', year: new Date().getFullYear(), worked_days: 0 });
+        setHnoEntries([]);
         await loadData();
       }
     } catch (error) {
@@ -122,13 +172,23 @@ export const TimesheetsPage: React.FC = () => {
       setError('Le nombre de jours travaillés doit être supérieur à 0');
       return;
     }
+
+    // Validation stricte des jours ouvrés - bloquer si dépassement
+    const validation = validateWorkedDays(formData.worked_days, formData.year, parseInt(formData.month));
+    if (!validation.isValid || validation.requiresComment) {
+      setError(validation.message || `Vous ne pouvez pas saisir plus de ${maxWorkingDays} jours ouvrés pour ce mois.`);
+      return;
+    }
     
     setSubmitting(true);
     
     try {
+      // Créer le format YYYY-MM pour la base de données
+      const monthFormatted = `${formData.year}-${formData.month.padStart(2, '0')}`;
+      
       const result = await TimesheetService.createSubmitted({
         client_id: formData.client_id,
-        month: formData.month,
+        month: monthFormatted,
         year: formData.year,
         worked_days: formData.worked_days,
       });
@@ -136,6 +196,7 @@ export const TimesheetsPage: React.FC = () => {
       if (result) {
         setShowForm(false);
         setFormData({ client_id: '', month: '', year: new Date().getFullYear(), worked_days: 0 });
+        setHnoEntries([]);
         await loadData();
       }
     } catch (error) {
@@ -161,6 +222,7 @@ export const TimesheetsPage: React.FC = () => {
     setEditingTimesheet(null);
     setError(null);
     setFormData({ client_id: '', month: '', year: new Date().getFullYear(), worked_days: 0 });
+    setHnoEntries([]);
   };
 
   const handleEditTimesheet = (timesheet: TimesheetWithRelations) => {
@@ -170,12 +232,16 @@ export const TimesheetsPage: React.FC = () => {
     }
 
     setEditingTimesheet(timesheet);
+    // Convertir le format YYYY-MM vers mois séparé
+    const monthValue = timesheet.month.includes('-') ? timesheet.month.split('-')[1] : timesheet.month.padStart(2, '0');
     setFormData({
       client_id: timesheet.contract?.client_id || '',
-      month: timesheet.month,
+      month: monthValue,
       year: timesheet.year || new Date().getFullYear(),
       worked_days: timesheet.worked_days,
     });
+    // TODO: Charger les HNO existantes depuis la base de données
+    setHnoEntries([]);
     setShowForm(true);
     setError(null);
   };
@@ -196,12 +262,22 @@ export const TimesheetsPage: React.FC = () => {
       setError('Le nombre de jours travaillés doit être supérieur à 0');
       return;
     }
+
+    // Validation stricte des jours ouvrés - bloquer si dépassement
+    const validation = validateWorkedDays(formData.worked_days, formData.year, parseInt(formData.month));
+    if (!validation.isValid || validation.requiresComment) {
+      setError(validation.message || `Vous ne pouvez pas saisir plus de ${maxWorkingDays} jours ouvrés pour ce mois.`);
+      return;
+    }
     
     setSubmitting(true);
     
     try {
+      // Créer le format YYYY-MM pour la base de données
+      const monthFormatted = `${formData.year}-${formData.month.padStart(2, '0')}`;
+      
       const result = await TimesheetService.updateDraft(editingTimesheet.id, {
-        month: formData.month,
+        month: monthFormatted,
         year: formData.year,
         worked_days: formData.worked_days,
       });
@@ -210,6 +286,7 @@ export const TimesheetsPage: React.FC = () => {
         setShowForm(false);
         setEditingTimesheet(null);
         setFormData({ client_id: '', month: '', year: new Date().getFullYear(), worked_days: 0 });
+        setHnoEntries([]);
         await loadData();
       }
     } catch (error) {
@@ -236,6 +313,7 @@ export const TimesheetsPage: React.FC = () => {
         setShowForm(false);
         setEditingTimesheet(null);
         setFormData({ client_id: '', month: '', year: new Date().getFullYear(), worked_days: 0 });
+        setHnoEntries([]);
         await loadData();
       }
     } catch (error) {
@@ -324,7 +402,7 @@ export const TimesheetsPage: React.FC = () => {
                       Client
                     </label>
                     <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full h-10 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                       value={formData.client_id}
                       onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
                       required
@@ -348,26 +426,37 @@ export const TimesheetsPage: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Mois
                     </label>
-                    <Input
-                      type="month"
+                    <select
+                      className="w-full h-10 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                       value={formData.month}
                       onChange={(e) => setFormData({ ...formData, month: e.target.value })}
                       required
-                    />
+                    >
+                      <option value="">Sélectionner un mois</option>
+                      {months.map((month) => (
+                        <option key={month.value} value={month.value}>
+                          {month.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Année
                     </label>
-                    <Input
-                      type="number"
-                      min="2020"
-                      max="2030"
+                    <select
+                      className="w-full h-10 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                       value={formData.year}
                       onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
                       required
-                    />
+                    >
+                      {Array.from({ length: 11 }, (_, i) => 2020 + i).map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -377,14 +466,49 @@ export const TimesheetsPage: React.FC = () => {
                     <Input
                       type="number"
                       min="0"
-                      max="31"
+                      max={maxWorkingDays || 31}
                       step="0.5"
                       value={formData.worked_days}
                       onChange={(e) => setFormData({ ...formData, worked_days: parseFloat(e.target.value) })}
                       required
+                      className="h-10"
                     />
+                    {workingDaysInfo && (
+                      <div className="text-xs text-gray-500 mt-1 space-y-1">
+                        <p>
+                          📅 Ce mois compte <strong>{workingDaysInfo.workingDays} jours ouvrés</strong> 
+                          (hors weekends et jours fériés)
+                        </p>
+                        {formData.worked_days > 0 && (() => {
+                          const validation = validateWorkedDays(formData.worked_days, formData.year, parseInt(formData.month));
+                          if (!validation.isValid || validation.requiresComment) {
+                            return (
+                              <p className="text-red-600">
+                                ❌ Vous ne pouvez pas saisir plus de {workingDaysInfo.workingDays} jours ouvrés pour ce mois.
+                              </p>
+                            );
+                          }
+                          if (formData.worked_days === workingDaysInfo.workingDays) {
+                            return (
+                              <p className="text-green-600">
+                                ✅ Temps complet ce mois
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* Gestion des Heures Non Ouvrées (HNO) */}
+                <HNOManager
+                  entries={hnoEntries}
+                  onChange={setHnoEntries}
+                  tjm={getCurrentTJM()}
+                  hideFinancialInfo={true}
+                />
 
                 <div className="flex gap-2 justify-end pt-4">
                   <Button

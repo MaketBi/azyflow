@@ -294,6 +294,50 @@ export type Database = {
           },
         ]
       }
+      hno_configurations: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          description: string
+          id: string
+          label: string
+          majoration_percent: number
+          time_range: string
+          time_slot: Database["public"]["Enums"]["hno_time_slot"]
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          description: string
+          id?: string
+          label: string
+          majoration_percent: number
+          time_range: string
+          time_slot: Database["public"]["Enums"]["hno_time_slot"]
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          label?: string
+          majoration_percent?: number
+          time_range?: string
+          time_slot?: Database["public"]["Enums"]["hno_time_slot"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hno_configurations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
@@ -681,6 +725,13 @@ export type Database = {
       }
     }
     Enums: {
+      hno_time_slot:
+        | "weekday_evening"
+        | "weekday_night"
+        | "saturday_day"
+        | "saturday_evening"
+        | "saturday_night"
+        | "sunday_holiday"
       timesheet_status: "draft" | "submitted" | "approved" | "rejected"
     }
     CompositeTypes: {
@@ -809,6 +860,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      hno_time_slot: [
+        "weekday_evening",
+        "weekday_night",
+        "saturday_day",
+        "saturday_evening",
+        "saturday_night",
+        "sunday_holiday",
+      ],
       timesheet_status: ["draft", "submitted", "approved", "rejected"],
     },
   },

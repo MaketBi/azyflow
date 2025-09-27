@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, Clock, CheckCircle, AlertCircle, XCircle, Eye } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, AlertCircle, XCircle, Eye, Settings } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../ui/Table';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { SearchBox } from '../ui/search';
 import { TimesheetService, TimesheetWithRelations } from '../../lib/services/timesheets';
 import TimesheetDetailModal from './TimesheetDetailModal';
+import { AdminHNOModal } from './AdminHNOModal';
+import { HNOEntry } from '../../lib/types/hno';
+import { HNOConfigurationModal } from '../hno/HNOConfigurationModal';
 
 const statusLabel = (status: string) => {
   if (status === 'draft') return 'Brouillon';
@@ -32,6 +35,9 @@ const TimesheetsView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedTimesheet, setSelectedTimesheet] = useState<TimesheetWithRelations | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [selectedTimesheetForHNO, setSelectedTimesheetForHNO] = useState<TimesheetWithRelations | null>(null);
+  const [isHNOModalOpen, setIsHNOModalOpen] = useState<boolean>(false);
+  const [isHNOConfigModalOpen, setIsHNOConfigModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     loadTimesheets();
@@ -101,14 +107,41 @@ const TimesheetsView: React.FC = () => {
     setIsModalOpen(false);
   };
 
+  const handleOpenHNOModal = (timesheet: TimesheetWithRelations) => {
+    setSelectedTimesheetForHNO(timesheet);
+    setIsHNOModalOpen(true);
+  };
+
+  const handleCloseHNOModal = () => {
+    setSelectedTimesheetForHNO(null);
+    setIsHNOModalOpen(false);
+  };
+
+  const handleSaveHNO = async (timesheetId: string, hnoEntries: HNOEntry[]) => {
+    // TODO: Implémenter la sauvegarde des HNO en base de données
+    console.log('Sauvegarde HNO pour timesheet', timesheetId, hnoEntries);
+    // await TimesheetService.saveHNO(timesheetId, hnoEntries);
+  };
+
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">
-          {filteredTimesheets.length} feuille{filteredTimesheets.length !== 1 ? 's' : ''} de temps
-          {timesheetSearch && ` (filtré${filteredTimesheets.length !== 1 ? 's' : ''} sur ${timesheets.length})`}
-        </h2>
-        <p className="text-sm text-gray-600 mt-1">Consultez et validez les feuilles de temps soumises</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">
+            {filteredTimesheets.length} feuille{filteredTimesheets.length !== 1 ? 's' : ''} de temps
+            {timesheetSearch && ` (filtré${filteredTimesheets.length !== 1 ? 's' : ''} sur ${timesheets.length})`}
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">Consultez et validez les feuilles de temps soumises</p>
+        </div>
+        
+        <Button
+          onClick={() => setIsHNOConfigModalOpen(true)}
+          variant="outline"
+          className="flex items-center gap-2 text-blue-600 border-blue-300 hover:bg-blue-50"
+        >
+          <Settings className="h-4 w-4" />
+          Configuration HNO
+        </Button>
       </div>
 
       {/* Champ de recherche pour les feuilles de temps */}
@@ -146,13 +179,14 @@ const TimesheetsView: React.FC = () => {
                       <TableHead>Mois</TableHead>
                       <TableHead>Jours travaillés</TableHead>
                       <TableHead>Statut</TableHead>
+                      <TableHead>HNO</TableHead>
                       <TableHead>Voir</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>                  <TableBody>
                     {filteredTimesheets.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
+                        <TableCell colSpan={7} className="text-center py-8">
                           <p className="text-gray-500">
                             {timesheetSearch 
                               ? `Aucune feuille de temps trouvée pour "${timesheetSearch}"` 
@@ -192,6 +226,19 @@ const TimesheetsView: React.FC = () => {
                               {ts.status === 'rejected' && <XCircle className="w-3 h-3 mr-1" />}
                               {statusLabel(ts.status)}
                             </span>
+                          </TableCell>
+
+                          <TableCell>
+                            <Button
+                              onClick={() => handleOpenHNOModal(ts)}
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center space-x-1 text-purple-600 border-purple-300 hover:bg-purple-50"
+                              title="Gérer les Heures Non Ouvrées"
+                            >
+                              <Clock className="w-4 h-4" />
+                              <span>HNO</span>
+                            </Button>
                           </TableCell>
 
                           <TableCell>
@@ -265,6 +312,22 @@ const TimesheetsView: React.FC = () => {
         timesheet={selectedTimesheet}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+      />
+
+      <AdminHNOModal
+        timesheet={selectedTimesheetForHNO}
+        isOpen={isHNOModalOpen}
+        onClose={handleCloseHNOModal}
+        onSave={handleSaveHNO}
+      />
+
+      <HNOConfigurationModal
+        isOpen={isHNOConfigModalOpen}
+        onClose={() => setIsHNOConfigModalOpen(false)}
+        onSave={() => {
+          // Recharger les timesheets pour refléter les nouveaux taux
+          loadTimesheets();
+        }}
       />
     </div>
   );
