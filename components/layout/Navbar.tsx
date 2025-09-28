@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, User, Settings, Menu, X } from 'lucide-react';
+import { LogOut, User, Menu, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { AuthService } from '../../lib/auth';
 
 interface NavbarProps {
   user: any;
-  isAdmin: boolean;
+  userRole: 'freelancer' | 'admin' | 'super_admin';
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ user, isAdmin }) => {
+export const Navbar: React.FC<NavbarProps> = ({ user, userRole }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -18,15 +18,56 @@ export const Navbar: React.FC<NavbarProps> = ({ user, isAdmin }) => {
     window.location.reload();
   };
 
-  const navigation = isAdmin ? [
-  { name: 'Tableau de bord', href: '/admin/dashboard' },
-  { name: 'Freelances & CRA', href: '/admin/freelancers-timesheets' },
-  { name: 'Clients & Contrats', href: '/admin/clients-contracts' },
-  { name: 'Gestion des Paiements Freelancers', href: '/admin/billing' },
-  ] : [
-  { name: 'Feuilles de temps (CRA)', href: '/freelancer/timesheets' },
-  { name: 'Contrats', href: '/freelancer/contracts' },
-  ];
+  // Navigation selon le rôle utilisateur
+  const getNavigation = () => {
+    switch (userRole) {
+      case 'super_admin':
+        return [
+          { name: 'Dashboard Super Admin', href: '/super-admin' },
+        ];
+      case 'admin':
+        return [
+          { name: 'Tableau de bord', href: '/admin/dashboard' },
+          { name: 'Freelances & CRA', href: '/admin/freelancers-timesheets' },
+          { name: 'Clients & Contrats', href: '/admin/clients-contracts' },
+          { name: 'Gestion des Paiements Freelancers', href: '/admin/billing' },
+        ];
+      case 'freelancer':
+      default:
+        return [
+          { name: 'Feuilles de temps (CRA)', href: '/freelancer/timesheets' },
+          { name: 'Contrats', href: '/freelancer/contracts' },
+        ];
+    }
+  };
+
+  // Chemin du profil selon le rôle
+  const getProfilePath = () => {
+    switch (userRole) {
+      case 'super_admin':
+        return '/super-admin';
+      case 'admin':
+        return '/admin/profile';
+      case 'freelancer':
+      default:
+        return '/freelancer/profile';
+    }
+  };
+
+  // Chemin de redirection du logo selon le rôle
+  const getHomePath = () => {
+    switch (userRole) {
+      case 'super_admin':
+        return '/super-admin';
+      case 'admin':
+        return '/admin/dashboard';
+      case 'freelancer':
+      default:
+        return '/freelancer/timesheets';
+    }
+  };
+
+  const navigation = getNavigation();
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -35,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, isAdmin }) => {
           {/* User Menu - Mobile : déplacé avant le logo pour être à droite */}
           <div className="flex items-center space-x-2 md:hidden order-3">
             <Link 
-              to={isAdmin ? '/admin/profile' : '/freelancer/profile'}
+              to={getProfilePath()}
               className="w-8 h-8 bg-gradient-to-r from-blue-600 to-violet-600 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
             >
               <User className="w-4 h-4 text-white" />
@@ -52,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, isAdmin }) => {
 
           <div className="flex items-center order-1">
             {/* Logo */}
-            <Link to={isAdmin ? '/admin/dashboard' : '/freelancer/timesheets'} className="flex items-center">
+            <Link to={getHomePath()} className="flex items-center">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-violet-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xl">A</span>
               </div>
@@ -82,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, isAdmin }) => {
           {/* User Menu - Desktop */}
           <div className="hidden md:flex items-center space-x-4 order-2">
             <Link 
-              to={isAdmin ? '/admin/profile' : '/freelancer/profile'}
+              to={getProfilePath()}
               className="flex items-center space-x-2 hover:bg-gray-50 px-3 py-2 rounded-lg transition-colors"
             >
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-violet-600 rounded-full flex items-center justify-center">

@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthService, UserProfile } from '../lib/auth';
 import { Navbar } from '../components/layout/Navbar';
-import { LoginPage } from '../pages/LoginPage';
+import { LandingPage } from '../pages/LandingPage';
+import { LoginOnlyPage } from '../pages/LoginOnlyPage';
+import { ESNOnboardingPage } from '../pages/ESNOnboardingPage';
 import { DashboardPage } from '../pages/admin/DashboardPage';
 import { TimesheetsPage } from '../pages/freelancer/TimesheetsPage';
 import { FreelancerContractsPage } from '../pages/freelancer/ContractsPage';
@@ -16,6 +18,9 @@ import FreelancerProfile from '../pages/admin/FreelancerProfile';
 import AdminInvoicesPage from '../pages/admin/invoices';
 import FreelancerInvoicesPage from '../pages/freelancer/invoices';
 import { BillingManagementPage } from '../pages/admin/BillingManagementPage';
+
+// ✅ Ajout Super Admin
+import SuperAdminPage from '../pages/super-admin/SuperAdminPage';
 
 // ✅ Ajout des routes auth
 import AuthCallback from '../pages/auth/callback';
@@ -60,19 +65,31 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
-        {user && <Navbar user={user} isAdmin={user.role === 'admin'} />}
+        {user && <Navbar user={user} userRole={user.role as 'freelancer' | 'admin' | 'super_admin'} />}
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Routes>
-            {/* ✅ Ajout simple des routes auth */}
+            {/* ✅ Routes d'authentification */}
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/set-password" element={<SetPasswordPage />} />
             <Route path="/auth/registration-success" element={<RegistrationSuccessPage />} />
-           
-
+            
+            {/* ✅ Route onboarding ESN */}
+            <Route path="/esn/onboarding" element={<ESNOnboardingPage />} />
+            
+            {/* ✅ Route Super Admin */}
+            <Route path="/super-admin" element={<SuperAdminPage />} />
+            
+            {/* ✅ Route de connexion */}
+            <Route path="/login" element={<LoginOnlyPage />} />
 
             {!user ? (
-              <Route path="*" element={<LoginPage />} />
+              <>
+                {/* Landing page par défaut pour les non-connectés */}
+                <Route path="/" element={<LandingPage />} />
+                {/* Redirection vers landing pour toutes les autres routes */}
+                <Route path="*" element={<LandingPage />} />
+              </>
             ) : user.role === 'admin' ? (
               <>
                 <Route path="/admin/dashboard" element={<DashboardPage />} />

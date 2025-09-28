@@ -109,24 +109,114 @@ export type Database = {
       }
       companies: {
         Row: {
+          contact_email: string | null
           created_at: string
+          estimated_freelancers: number | null
           id: string
+          invited_at: string | null
+          invited_by: string | null
           name: string
           plan: string
+          siret: string | null
+          status: Database["public"]["Enums"]["company_status"] | null
         }
         Insert: {
+          contact_email?: string | null
           created_at?: string
+          estimated_freelancers?: number | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
           name: string
           plan?: string
+          siret?: string | null
+          status?: Database["public"]["Enums"]["company_status"] | null
         }
         Update: {
+          contact_email?: string | null
           created_at?: string
+          estimated_freelancers?: number | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
           name?: string
           plan?: string
+          siret?: string | null
+          status?: Database["public"]["Enums"]["company_status"] | null
         }
         Relationships: []
+      }
+      company_invitations: {
+        Row: {
+          accepted_at: string | null
+          business_sector: string | null
+          company_created_id: string | null
+          company_name: string
+          created_at: string | null
+          email: string
+          estimated_freelancers: number | null
+          expires_at: string | null
+          id: string
+          invitation_token: string
+          invited_by: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          siret: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          business_sector?: string | null
+          company_created_id?: string | null
+          company_name: string
+          created_at?: string | null
+          email: string
+          estimated_freelancers?: number | null
+          expires_at?: string | null
+          id?: string
+          invitation_token?: string
+          invited_by?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          siret?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          business_sector?: string | null
+          company_created_id?: string | null
+          company_name?: string
+          created_at?: string | null
+          email?: string
+          estimated_freelancers?: number | null
+          expires_at?: string | null
+          id?: string
+          invitation_token?: string
+          invited_by?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          siret?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_invitations_company_created_id_fkey"
+            columns: ["company_created_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contracts: {
         Row: {
@@ -228,6 +318,48 @@ export type Database = {
           id?: string
           response?: string | null
           status?: number | null
+        }
+        Relationships: []
+      }
+      demo_requests: {
+        Row: {
+          company_name: string
+          contact_name: string
+          created_at: string
+          email: string
+          freelancers_count: string
+          id: string
+          message: string | null
+          notes: string | null
+          phone: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_name: string
+          contact_name: string
+          created_at?: string
+          email: string
+          freelancers_count: string
+          id?: string
+          message?: string | null
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_name?: string
+          contact_name?: string
+          created_at?: string
+          email?: string
+          freelancers_count?: string
+          id?: string
+          message?: string | null
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -488,6 +620,47 @@ export type Database = {
           },
         ]
       }
+      super_admin_activities: {
+        Row: {
+          activity_type: string
+          admin_id: string
+          created_at: string | null
+          description: string
+          id: string
+          metadata: Json | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          activity_type: string
+          admin_id: string
+          created_at?: string | null
+          description: string
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          activity_type?: string
+          admin_id?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "super_admin_activities_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timesheet_reminders: {
         Row: {
           created_at: string | null
@@ -635,6 +808,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_esn_invitation: {
+        Args: { p_company_id: string; p_invitation_token: string }
+        Returns: boolean
+      }
       create_default_notification_preferences: {
         Args: { user_id_param: string }
         Returns: {
@@ -650,6 +827,16 @@ export type Database = {
           updated_at: string
           user_id: string
         }[]
+      }
+      create_esn_invitation: {
+        Args: {
+          p_business_sector?: string
+          p_company_name: string
+          p_email: string
+          p_estimated_freelancers?: number
+          p_siret?: string
+        }
+        Returns: string
       }
       current_company_id: {
         Args: Record<PropertyKey, never>
@@ -725,6 +912,7 @@ export type Database = {
       }
     }
     Enums: {
+      company_status: "pending" | "accepted" | "rejected"
       hno_time_slot:
         | "weekday_evening"
         | "weekday_night"
@@ -733,6 +921,7 @@ export type Database = {
         | "saturday_night"
         | "sunday_holiday"
       timesheet_status: "draft" | "submitted" | "approved" | "rejected"
+      user_role: "admin" | "freelancer" | "super_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -860,6 +1049,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      company_status: ["pending", "accepted", "rejected"],
       hno_time_slot: [
         "weekday_evening",
         "weekday_night",
@@ -869,6 +1059,7 @@ export const Constants = {
         "sunday_holiday",
       ],
       timesheet_status: ["draft", "submitted", "approved", "rejected"],
+      user_role: ["admin", "freelancer", "super_admin"],
     },
   },
 } as const
